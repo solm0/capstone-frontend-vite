@@ -1,15 +1,19 @@
-import { useEffect, useState } from "react"
+import { BrowserRouter, Routes, Route } from "react-router-dom"
+import Login from "./pages/Login"
+import Signup from "./pages/Signup"
+import ResetPassword from "./pages/ResetPassword"
+import ResetRequest from "./pages/ResetRequest"
 
 export default function App() {
-  const [hello, setHello] = useState({ message: "" })
-
-  useEffect(() => {
-    fetch("http://localhost:8000/api/hello")
-      .then(res => res.json())
-      .then(data => setHello(data))
-  }, [])
-
   return (
-    <div>{hello.message}</div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Login />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/reset-request" element={<ResetRequest />} />
+      </Routes>
+    </BrowserRouter>
   )
 }
