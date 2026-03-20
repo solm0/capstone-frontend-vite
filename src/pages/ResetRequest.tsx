@@ -7,8 +7,12 @@ export default function ResetRequest(){
   const [msg,setMsg]=useState("")
 
   async function submit(){
-    const res=await requestReset(email)
-    setMsg(res.message)
+    if (email.trim()) {
+      const res=await requestReset(email)
+      setMsg(res.message)
+    } else {
+      setMsg('enter your email')
+    }
   }
 
   return(
@@ -18,6 +22,7 @@ export default function ResetRequest(){
 
       <input
         value={email}
+        placeholder="your email"
         onChange={e=>setEmail(e.target.value)}
       />
 

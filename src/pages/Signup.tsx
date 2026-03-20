@@ -14,7 +14,7 @@ export default function Signup(){
 
   return(
     <div>
-      <h2>Signup</h2>
+      <h2>Create account</h2>
 
       <input
         placeholder="email"
@@ -30,7 +30,7 @@ export default function Signup(){
       />
 
       <button onClick={submit}>
-        signup
+        go!
       </button>
 
       <div>{msg}</div>

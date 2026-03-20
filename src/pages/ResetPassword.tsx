@@ -10,8 +10,13 @@ export default function ResetPassword(){
   const [msg,setMsg]=useState("")
 
   async function submit(){
-    const res=await resetPassword(token,pw)
-    setMsg(res.message)
+    if (pw.trim()) {
+      const res=await resetPassword(token,pw)
+      setMsg(res.message)
+    } else {
+      setMsg('enter the new password')
+    }
+    
   }
 
   return(
@@ -21,6 +26,7 @@ export default function ResetPassword(){
 
       <input
         type="password"
+        placeholder="enter new password"
         value={pw}
         onChange={e=>setPw(e.target.value)}
       />
