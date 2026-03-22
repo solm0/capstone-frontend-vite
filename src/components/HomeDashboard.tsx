@@ -1,10 +1,13 @@
+import Breadcrumb from "./breadcrumb/Breadcrumb";
+import Desk from "./desk/Desk";
 import LogoutButton from "./LogoutButton";
 
 export default function HomeDashboard() {
   return (
-    <>
+    <div className="relative w-full h-full">
       <LogoutButton />
-      <div className="font-xtypewriter">dashboard</div>
-    </>
+      <Breadcrumb />
+      <Desk />
+    </div>
   )
 }

@@ -5,12 +5,20 @@
   font-style: normal;
 }
 
+@font-face {
+  font-family: 'rursus';
+  src: url('/rursus.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @theme {
   --font-xtypewriter: 'xtypewriter', monospace;
+  --font-rursus: 'rursus', monospace;
 }
 
 :root {
@@ -61,9 +69,7 @@
 } */
 
 #root {
-  width: 1126px;
   max-width: 100%;
-  margin: 0 auto;
   text-align: center;
   min-height: 100svh;
   display: flex;
@@ -72,6 +78,7 @@
 }
 
 body {
+  background-color: #f6f6f6;
   margin: 0;
 }
 
@@ -102,4 +109,22 @@ h2 {
 }
 p {
   margin: 0;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 3px;
+  height: 3px;
+}
+
+.custom-scrollbar:hover::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #d6d3cd50;
 }

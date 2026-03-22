@@ -9,6 +9,7 @@ export default {
     extend: {
       fontFamily: {
         xtypewriter: ['xtypewriter', 'monospace'],
+        rursus: ['rursus', 'monospace'],
       },
     },
   },

@@ -4,7 +4,7 @@ export default function HomeNoLogin() {
   return (
     <>
       <Link to={'/login'}>
-        <div className="fixed top-4 left-4 w-10 h-10 bg-black rounded-full active:scale-[80%] transition-all ease-in-out"></div>
+        <div className="fixed top-4 left-4">login</div>
       </Link>
       <div className="font-xtypewriter">home no login</div>
     </>
