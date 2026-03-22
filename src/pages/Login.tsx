@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { login } from "../api"
 import { Link, useNavigate } from "react-router-dom"
+import Button from "../components/Button"
 
 export default function Login(){
 
@@ -49,9 +50,7 @@ export default function Login(){
         onChange={e=>setPassword(e.target.value)}
       />
 
-      <button onClick={submit}>
-        login
-      </button>
+      <Button text="login" onClick={submit} />
 
       <div className="text-red-600">{msg}</div>
 

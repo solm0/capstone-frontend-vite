@@ -1,6 +1,4 @@
-"use client";
-
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import RawToken from "./RawToken";
 
 interface Node {
@@ -42,7 +40,7 @@ export default function Line({ line }: { line: string }) {
     const els = tokenRefs.current as HTMLDivElement[];
     if (els.some((e) => !e)) return;
 
-    const W = tokens.length * 30 + 400;
+    const W = line.length * 15 + tokens.length/line.length *100;
     const CY = container.clientHeight / 2;
     const widths = els.map((el) => el.offsetWidth);
     const totalW = widths.reduce((a, b) => a + b, 0);
@@ -170,6 +168,7 @@ export default function Line({ line }: { line: string }) {
 
   // ── drag ─────────────────────────────────────────────────────────────────
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>, i: number) => {
+    e.stopPropagation();
     e.currentTarget.setPointerCapture(e.pointerId);
     const nd = nodes.current[i + 1];
     drag.current = { idx: i + 1, ox: e.clientX - nd.x, oy: e.clientY - nd.y };
@@ -178,6 +177,7 @@ export default function Line({ line }: { line: string }) {
   };
 
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.stopPropagation();
     if (!drag.current) return;
     const nd = nodes.current[drag.current.idx];
     prevPos.current = { x: nd.x, y: nd.y };
@@ -196,7 +196,7 @@ export default function Line({ line }: { line: string }) {
 
   // ── render ────────────────────────────────────────────────────────────────
   return (
-    <div className="relative flex flex-col gap-3 select-none">
+    <div className="relative flex flex-col gap-3 select-none h-auto">
       <div
         ref={containerRef}
         className="relative w-full"
@@ -216,15 +216,15 @@ export default function Line({ line }: { line: string }) {
               data-rope
               strokeWidth="1.5"
               strokeLinecap="square"
-              className="stroke-stone-200 opacity-80"
+              className="stroke-stone-300 opacity-80"
             />
           ))}
           {/* edge dots on each token */}
-          {Array.from({ length: n * 2 }).map((_, i) => (
+          {/* {Array.from({ length: n * 2 }).map((_, i) => (
             <circle key={i} data-conn r="3" className="fill-stone-200" />
-          ))}
+          ))} */}
           {/* fixed anchor dots */}
-          <circle cx="0"    cy="50%" r="3" className="fill-[#000]" />
+          <circle cx="0"    cy="50%" r="3" className="fill-[#555]" />
           {/* <circle cx="100%" cy="50%" r="5" className="fill-stone-500" /> */}
         </svg>
 

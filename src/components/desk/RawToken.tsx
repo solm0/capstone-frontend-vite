@@ -4,16 +4,14 @@ export default function RawToken({
   rawToken: string
 }) {
 
-  const width = rawToken.length*10 + 15
+  const width = rawToken.length*10
 
   return (
     <div
-      className="relative w-auto h-auto flex items-center justify-center transition-all duration-300 cursor-pointer rounded-full bg-stone-200 hover:bg-stone-300 active:bg-stone-300 backdrop-blur-sm"
+      style={{width: `${width}px`}}
+      className="relative w-auto h-auto flex items-center justify-center cursor-pointer"
     >
-      <div
-        style={{width: `${width}px`, height: `${width}px`}}
-      />
-      <span className="absolute">{rawToken}</span>
+      <span className="absolute bg-stone-300 px-1">{rawToken}</span>
     </div>
   )
 }

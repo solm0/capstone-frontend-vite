@@ -1,7 +1,6 @@
-"use client";
-
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import * as d3 from "d3";
+import type { TreeNode } from "../../types";
 
 // ── 스타일 변수 ──────────────────────────────────────────────────────────────
 const STYLE = {
@@ -27,11 +26,6 @@ const STYLE = {
 const MARGIN = { top: 32, right: 120, bottom: 32, left: 100 };
 
 // ── 데이터 ───────────────────────────────────────────────────────────────────
-interface TreeNode {
-  lemma: string;
-  children?: TreeNode[];
-}
-
 const data: TreeNode = {
   lemma: "любовь",
   children: [
@@ -73,34 +67,88 @@ const data: TreeNode = {
   ],
 };
 
-type D3Node = d3.HierarchyPointNode<TreeNode> & {
+export type D3Node = d3.HierarchyPointNode<TreeNode> & {
   x0?: number;
   y0?: number;
   _children?: D3Node["children"];
 };
 
-function onNodeAction(d: D3Node) {
-  console.log("action on node:", d.data.lemma);
-}
-
 // ── 컴포넌트 ─────────────────────────────────────────────────────────────────
-export default function Breadcrumb() {
+export default function Breadcrumb({
+  activeNode, setActiveNode,
+}: {
+  activeNode: D3Node | null;
+  setActiveNode: (activeNode: D3Node | null) => void
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef       = useRef<SVGSVGElement>(null);
+
+  // activeNode state + ref 브릿지 (D3 클로저에서 최신 값 참조용)
+  const activeNodeRef = useRef<D3Node | null>(null);
+  // D3 update 함수를 외부에서 호출하기 위한 ref
+  const updateRef = useRef<((source: D3Node) => void) | null>(null);
+
+  const setActive = useCallback((node: D3Node | null) => {
+    activeNodeRef.current = node;
+    setActiveNode(node);
+    if (updateRef.current) {
+      updateRef.current(node ?? ({} as D3Node));
+    }
+  }, []);
 
   useEffect(() => {
     const el        = svgRef.current;
     const container = containerRef.current;
     if (!el || !container) return;
 
-    const svg       = d3.select(el);
+    const svg = d3.select(el);
     svg.selectAll("*").remove();
 
-    const g         = svg.append("g");
+    // ── zoom / pan 설정 ────────────────────────────────────────────────────
+    svg.append("defs").html(`
+      <pattern id="dotgrid" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
+        <circle cx="12" cy="12" r="1.2" fill="#c8c5be"/>
+      </pattern>
+    `);
+
+    const zoomG = svg.append("g").attr("class", "zoom-layer");
+
+    svg.insert("rect", ":first-child")
+      .attr("id", "dot-bg")
+      .attr("width", "100%")
+      .attr("height", "100%")
+      .attr("fill", "url(#dotgrid)");
+
+    const zoom = d3.zoom<SVGSVGElement, unknown>()
+      .scaleExtent([0.15, 4])
+      .on("zoom", (event) => {
+        zoomG.attr("transform", event.transform);
+
+      svg.select("#dotgrid")
+       .attr("patternTransform", event.transform.toString());
+      });
+
+    svg
+      .call(zoom)
+      // 더블클릭으로 zoom reset
+      .on("dblclick.zoom", () => {
+        svg.transition().duration(400)
+          .call(zoom.transform, d3.zoomIdentity)
+          .on("end", () => {
+            svg.select("#dotgrid").attr("patternTransform", null);
+          });
+      });
+
+    // 초기 transform: 원래 MARGIN 만큼 이동
+    svg.call(
+      zoom.transform,
+      d3.zoomIdentity.translate(MARGIN.left, MARGIN.top)
+    );
+
+    const g         = zoomG.append("g");
     const linkGroup = g.append("g").attr("fill", "none");
     const nodeGroup = g.append("g");
 
-    // nodeSize 기반 레이아웃: 각 노드에 고정 간격 부여
     const treeLayout = d3.tree<TreeNode>().nodeSize([22, STYLE.depthSpacing]);
 
     const root = d3.hierarchy(data) as D3Node;
@@ -129,7 +177,38 @@ export default function Breadcrumb() {
       return !!(d.children || d._children);
     }
 
-    // ── hover 버튼 ────────────────────────────────────────────────────────
+    function getActivePath(active: D3Node | null): Set<string> {
+      if (!active) return new Set();
+      const ids = new Set<string>();
+      (active.ancestors() as D3Node[]).forEach((n) => {
+        if (n.id) ids.add(n.id as unknown as string);
+      });
+      return ids;
+    }
+
+    function applyOpacity(
+      nodeSelection: d3.Selection<SVGGElement, D3Node, SVGGElement, unknown>,
+      linkSelection: d3.Selection<SVGPathElement, d3.HierarchyLink<TreeNode>, SVGGElement, unknown>,
+      activeIds: Set<string>,
+      hoveredId: string | null
+    ) {
+      const hasActive = activeIds.size > 0;
+
+      nodeSelection.style("opacity", (d) => {
+        if (!hasActive) return "1";
+        const id = d.id as unknown as string;
+        if (id === hoveredId) return "1";
+        return activeIds.has(id) ? "1" : "0.5";
+      });
+
+      linkSelection.style("opacity", (d) => {
+        if (!hasActive) return "1";
+        const sourceId = (d.source as D3Node).id as unknown as string;
+        const targetId = (d.target as D3Node).id as unknown as string;
+        return activeIds.has(sourceId) && activeIds.has(targetId) ? "1" : "0.5";
+      });
+    }
+
     const BTN_W = 20, BTN_H = 20, BTN_GAP = 4;
     const BTN_OFFSET_X = -30;
     const BTN_OFFSET_Y = -30;
@@ -172,15 +251,14 @@ export default function Breadcrumb() {
       .text("×");
 
     let hoveredNode: D3Node | null = null;
+    let hoveredId: string | null = null;
     let hideTimer: ReturnType<typeof setTimeout> | null = null;
 
     function showButtons(d: D3Node) {
       if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
       hoveredNode = d;
-      const hasAction = isInternal(d);
-      actionBtn.style("display", hasAction ? "block" : "none");
       fo
-        .attr("width", hasAction ? BTN_W * 2 + BTN_GAP : BTN_W)
+        .attr("width", BTN_W * 2 + BTN_GAP)
         .attr("x", d.y + BTN_OFFSET_X)
         .attr("y", d.x + BTN_OFFSET_Y)
         .style("display", null);
@@ -200,9 +278,10 @@ export default function Breadcrumb() {
     actionBtn.on("click", (event) => {
       event.stopPropagation();
       if (!hoveredNode) return;
-      onNodeAction(hoveredNode);
+      setActive(hoveredNode);
       fo.style("display", "none");
       hoveredNode = null;
+      hoveredId = null;
     });
 
     deleteBtn.on("click", (event) => {
@@ -211,6 +290,7 @@ export default function Breadcrumb() {
       console.log("delete node:", hoveredNode.data.lemma);
       fo.style("display", "none");
       hoveredNode = null;
+      hoveredId = null;
     });
 
     // ── update ────────────────────────────────────────────────────────────
@@ -221,24 +301,10 @@ export default function Breadcrumb() {
 
       nodes.forEach((d) => { d.y = d.depth * STYLE.depthSpacing; });
 
-      // 노드 전체 bounding box 계산
-      const xs = nodes.map((d) => d.x ?? 0);
-      const ys = nodes.map((d) => d.y ?? 0);
-      const minX = Math.min(...xs);
-      const maxX = Math.max(...xs);
-      const maxY = Math.max(...ys);
-
-      // g 오프셋: minX가 음수면 위쪽 노드가 잘리므로 보정
-      const offsetX = MARGIN.left;
-      const offsetY = MARGIN.top - minX;
-      g.attr("transform", `translate(${offsetX},${offsetY})`);
-
-      // SVG를 콘텐츠 크기에 맞게 확장 (컨테이너보다 작아지지 않도록)
-      const contentW = maxY + offsetX + MARGIN.right;
-      const contentH = (maxX - minX) + MARGIN.top + MARGIN.bottom;
+      // SVG 크기는 컨테이너 크기로 고정 (pan/zoom이 있으므로 컨텐츠 크기로 키울 필요 없음)
       svg
-        .attr("width",  Math.max(container.clientWidth,  contentW))
-        .attr("height", Math.max(container.clientHeight, contentH));
+        .attr("width",  container.clientWidth)
+        .attr("height", container.clientHeight);
 
       // 링크
       const link = linkGroup
@@ -320,17 +386,30 @@ export default function Breadcrumb() {
         }
         fo.style("display", "none");
         hoveredNode = null;
+        hoveredId = null;
         update(d);
       });
 
       nodeUpdate
         .on("mouseenter", function (_e, d) {
           d3.select(this).select("circle").attr("r", STYLE.circleRHover);
+          hoveredId = d.id as unknown as string;
           showButtons(d);
+
+          const activeIds = getActivePath(activeNodeRef.current);
+          const allNodes  = nodeGroup.selectAll<SVGGElement, D3Node>("g.node");
+          const allLinks  = linkGroup.selectAll<SVGPathElement, d3.HierarchyLink<TreeNode>>("path.link");
+          applyOpacity(allNodes, allLinks, activeIds, hoveredId);
         })
         .on("mouseleave", function () {
           d3.select(this).select("circle").attr("r", STYLE.circleRInner);
+          hoveredId = null;
           scheduleHide();
+
+          const activeIds = getActivePath(activeNodeRef.current);
+          const allNodes  = nodeGroup.selectAll<SVGGElement, D3Node>("g.node");
+          const allLinks  = linkGroup.selectAll<SVGPathElement, d3.HierarchyLink<TreeNode>>("path.link");
+          applyOpacity(allNodes, allLinks, activeIds, null);
         });
 
       node.exit().transition().duration(STYLE.duration)
@@ -339,27 +418,52 @@ export default function Breadcrumb() {
         .remove();
 
       nodeGroup.node()?.appendChild(fo.node()!);
+
+      const activeIds = getActivePath(activeNodeRef.current);
+      const allNodes  = nodeGroup.selectAll<SVGGElement, D3Node>("g.node");
+      const allLinks  = linkGroup.selectAll<SVGPathElement, d3.HierarchyLink<TreeNode>>("path.link");
+      applyOpacity(allNodes, allLinks, activeIds, hoveredId);
+
       nodes.forEach((d) => { d.x0 = d.x; d.y0 = d.y; });
     }
 
+    updateRef.current = update;
+
     update(root);
 
-    const ro = new ResizeObserver(() => update(root));
+    const ro = new ResizeObserver(() => {
+      svg
+        .attr("width",  container.clientWidth)
+        .attr("height", container.clientHeight);
+    });
     ro.observe(container);
     return () => ro.disconnect();
-  }, []);
+  }, [setActive]);
+
+  // activeNode state가 바뀔 때 D3 업데이트 트리거
+  useEffect(() => {
+    if (updateRef.current) {
+      updateRef.current(activeNodeRef.current ?? ({} as D3Node));
+    }
+  }, [activeNode]);
 
   return (
-    <div
-      ref={containerRef}
-      className="relative overflow-scroll custom-scrollbar"
-      style={{
-        width: "100%",
-        height: "300px",
-        overflow: "scroll",
-      }}
-    >
-      <svg ref={svgRef} style={{ display: "block" }} />
+    <div className="relative w-auto h-auto p-5">
+      <div
+        ref={containerRef}
+        className="relative border bg-stone-100 rounded-3xl"
+        style={{
+          width: "100%",
+          height: "200px",
+          overflow: "hidden",
+          cursor: "grab",
+        }}
+      >
+        <svg
+          ref={svgRef}
+          style={{ display: "block", width: "100%", height: "100%" }}
+        />
+      </div>
     </div>
   );
 }
