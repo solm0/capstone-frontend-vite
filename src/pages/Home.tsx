@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { verifyToken } from "../api/api"
+import { verifyToken } from "../api"
 import HomeNoLogin from "../components/HomeNoLogin"
 import HomeDashboard from "../components/HomeDashboard"
 

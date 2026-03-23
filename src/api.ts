@@ -31,3 +31,12 @@ export async function resetPassword(token:string,new_password:string){
     body:JSON.stringify({token,new_password})
   }).then(r=>r.json())
 }
+
+export async function verifyToken() {
+  const token = localStorage.getItem("token")
+  if (!token) return false
+  const res = await fetch(API+"/me", {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+  return res.ok
+}
