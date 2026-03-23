@@ -1,4 +1,4 @@
-const API = "http://localhost:8000/api"
+const API = import.meta.env.VITE_API_ENDPOINT
 
 export async function signup(email:string,password:string){
   return fetch(API+"/signup",{
