@@ -1,21 +1,19 @@
 import { useEffect, type ReactNode } from "react";
 import CorpusFragment from "./CorpusFragment";
 import LemmaExpansion from "./LemmaExpansion";
-import type { LayoutData } from "../../types";
+import type { CorpusFragment as CF, LayoutData, LemmaExpansion as LE } from "../../types";
 import type { D3Node } from "../breadcrumb/Breadcrumb";
 
 export default function Desk({
   activeNode,
   layouts,
   activeId,
-  setActiveId,
   addLayout,
   onSelect,
 }: {
   activeNode: D3Node | null;
   layouts: LayoutData[];
   activeId: string | null;
-  setActiveId: (id: string) => void;
   addLayout: (layout: LayoutData) => void;
   onSelect: (rawToken: string) => void;
 }) {
@@ -53,9 +51,13 @@ export default function Desk({
   const layout = layouts.find(l => l.id === activeId)
 
   let component:ReactNode | null;
-  if (layout?.type === 'corpusFragment') component = <CorpusFragment data={layout.content} setActiveId={setActiveId} onSelect={onSelect} />
-  else if (layout?.type === 'lemmaExpansion') component = <LemmaExpansion data={layout.content} setActiveId={setActiveId} onSelect={onSelect} />
-  else component = <div>wrong layout type</div>
+  if (layout?.type === 'corpusFragment') {
+    const content = layout.content as CF;
+    component = <CorpusFragment data={content} onSelect={onSelect} />
+  } else if (layout?.type === 'lemmaExpansion') {
+    const content = layout.content as LE;
+    component = <LemmaExpansion data={content} onSelect={onSelect} />
+  } else component = <div>wrong layout type</div>
 
   return (
     <div className="w-full h-full flex items-center justify-center">

@@ -38,6 +38,7 @@ const MARGIN = { top: 32, right: 120, bottom: 32, left: 100 };
 export type D3Node = d3.HierarchyPointNode<TreeNode> & {
   x0?: number;
   y0?: number;
+  _uid?: string;
 };
 
 const initialData: TreeNode = { lemma: "base" };
@@ -197,11 +198,10 @@ const Breadcrumb = forwardRef<
 
       nodeSelection.style("opacity", (d) => {
         if (!hasActive) return "1";
-        const id = d.id as unknown as string;
+        const id = d._uid as unknown as string;
         if (id === hoveredId) return "1";
         return activeIds.has(id) ? "1" : "0.5";
       });
-      console.log(activeIds)
 
       linkSelection.style("opacity", (d) => {
         if (!hasActive) return "1";
@@ -278,12 +278,10 @@ const Breadcrumb = forwardRef<
 
       // data에서 자식 제거
       const parentData = parent.data;
-      console.log(parentData)
       parentData.children = (parentData.children ?? []).filter(
         (c) => c.lemma !== targetNode.data.lemma
       );
       if (parentData.children.length === 0) {
-        console.log(rootRef)
         parentData.children = undefined;
       }
 
@@ -308,13 +306,13 @@ const Breadcrumb = forwardRef<
       // 기존 노드의 x0/y0/id를 lemma 기준으로 이식
       const posMap = new Map<string, { x: number; y: number; id: any }>();
       (rootRef.current as d3.HierarchyNode<TreeNode>).descendants().forEach((d: any) => {
-        if (d.data.lemma) posMap.set(d.data.lemma, { x: d.x ?? 0, y: d.y ?? 0, id: d.id });
+        if (d.data.lemma) posMap.set(d.data.lemma, { x: d.x ?? 0, y: d.y ?? 0, id: d._uid });
       });
       rebuilt.each((d: D3Node) => {
         const pos = posMap.get(d.data.lemma);
         d.x0 = pos?.x ?? 0;
         d.y0 = pos?.y ?? 0;
-        if (pos?.id) d.id = pos.id;
+        if (pos?.id) d._uid = pos.id;
       });
       
       // root 자체를 rebuilt로 교체 (Object.assign 대신 rootRef 갱신)
@@ -324,7 +322,7 @@ const Breadcrumb = forwardRef<
       // activeNode를 새 hierarchy에서 찾아 교체
       if (activeNodeRef.current) {
         const newActive = rebuilt.descendants()
-          .find(d => d.id === activeNodeRef.current!.id) as D3Node | undefined;
+          .find(d => d._uid === activeNodeRef.current!.id) as D3Node | undefined;
         activeNodeRef.current = newActive ?? null;
       }
 
@@ -335,8 +333,8 @@ const Breadcrumb = forwardRef<
       nodes.forEach((d) => { d.y = d.depth * STYLE.depthSpacing; });
 
       svg
-        .attr("width",  container.clientWidth)
-        .attr("height", container.clientHeight);
+        .attr("width",  container!.clientWidth)
+        .attr("height", container!.clientHeight);
 
       // 링크
       const link = linkGroup
@@ -371,8 +369,8 @@ const Breadcrumb = forwardRef<
       const node = nodeGroup
         .selectAll<SVGGElement, D3Node>("g.node")
         .data(nodes, (d) => {
-          if (!d.id) d.id = ++uid as unknown as string;
-          return d.id as unknown as string;
+          if (!d._uid) d._uid = ++uid as unknown as string;
+          return d._uid as unknown as string;
         });
 
       const nodeEnter = node.enter().append("g")
@@ -418,7 +416,7 @@ const Breadcrumb = forwardRef<
       nodeUpdate
         .on("mouseenter", function (_e, d) {
           d3.select(this).select("circle").attr("r", STYLE.circleRHover);
-          hoveredId = d.id as unknown as string;
+          hoveredId = d._uid as unknown as string;
           showButtons(d);
 
           const activeIds = getActivePath(activeNodeRef.current);

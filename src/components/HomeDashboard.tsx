@@ -12,7 +12,7 @@ const exampleCFData: LayoutData = {
     lines: [
       'Теперь не умирают от любви —',
       'насмешливая трезвая эпоха.',
-      'Лишь падает гемоглобин в крови,',
+      // 'Лишь падает гемоглобин в крови,',
     ]
   }
 }
@@ -23,6 +23,7 @@ export default function HomeDashboard() {
   const [activeNode, setActiveNode] = useState<D3Node | null>(null);
   const [layouts, setLayouts] = useState<LayoutData[]>([exampleCFData]);
   const [activeId, setActiveId] = useState<string | null>('cf');
+  console.log(layouts)
 
   const addLayout = useCallback((layout: LayoutData) => {
     setLayouts(prev => {
@@ -52,7 +53,6 @@ export default function HomeDashboard() {
           activeNode={activeNode}
           layouts={layouts}
           activeId={activeId}
-          setActiveId={setActiveId}
           addLayout={addLayout}
           onSelect={handleTokenSelect}
         />
