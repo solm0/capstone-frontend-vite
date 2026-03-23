@@ -1,6 +1,15 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from "react";
 import * as d3 from "d3";
 import type { TreeNode } from "../../types";
+
+function findInData(node: TreeNode, lemma: string): TreeNode | null {
+  if (node.lemma === lemma) return node;
+  for (const child of node.children ?? []) {
+    const found = findInData(child, lemma);
+    if (found) return found;
+  }
+  return null;
+}
 
 // ── 스타일 변수 ──────────────────────────────────────────────────────────────
 const STYLE = {
@@ -26,59 +35,20 @@ const STYLE = {
 const MARGIN = { top: 32, right: 120, bottom: 32, left: 100 };
 
 // ── 데이터 ───────────────────────────────────────────────────────────────────
-const data: TreeNode = {
-  lemma: "любовь",
-  children: [
-    {
-      lemma: "умирать",
-      children: [
-        { lemma: "смерть",  children: [{ lemma: "конец" }, { lemma: "тишина" }] },
-        { lemma: "жизнь",   children: [{ lemma: "дышать" }, { lemma: "кровь" }] },
-        { lemma: "причина" },
-      ],
-    },
-    {
-      lemma: "сердце",
-      children: [
-        { lemma: "боль",  children: [{ lemma: "гемоглобин", children: [
-        { lemma: "боль",  children: [{ lemma: "гемоглобин" }, { lemma: "врач" }] },
-        { lemma: "ночь",  children: [{ lemma: "темнота" }, { lemma: "одиночество", children: [
-        { lemma: "боль",  children: [{ lemma: "гемоглобин" }, { lemma: "врач" }] },
-        { lemma: "ночь",  children: [{ lemma: "темнота" }, { lemma: "одиночество" }] },
-      ], }] },
-      ], }, { lemma: "врач" }] },
-        { lemma: "ночь",  children: [{ lemma: "темнота" }, { lemma: "одиночество" }] },
-      ],
-    },
-    {
-      lemma: "эпоха",
-      children: [
-        { lemma: "трезвость", children: [{ lemma: "насмешка" }] },
-        { lemma: "теперь",    children: [{ lemma: "время" }, { lemma: "мир" }] },
-      ],
-    },
-    {
-      lemma: "мама",
-      children: [
-        { lemma: "неотложка", children: [{ lemma: "помощь" }, { lemma: "плечо" }] },
-        { lemma: "зов" },
-      ],
-    },
-  ],
-};
-
 export type D3Node = d3.HierarchyPointNode<TreeNode> & {
   x0?: number;
   y0?: number;
 };
 
+const initialData: TreeNode = { lemma: "base" };
+
 // ── 컴포넌트 ─────────────────────────────────────────────────────────────────
-export default function Breadcrumb({
-  activeNode, setActiveNode,
-}: {
-  activeNode: D3Node | null;
-  setActiveNode: (activeNode: D3Node | null) => void
-}) {
+const Breadcrumb = forwardRef<
+  { addNode: (parentLemma: string, newNode: TreeNode) => void },
+  { activeNode: D3Node | null; setActiveNode: (n: D3Node | null) => void }
+>(function Breadcrumb({ activeNode, setActiveNode }, ref) {
+  const rootRef = useRef<D3Node | null>(null);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef       = useRef<SVGSVGElement>(null);
 
@@ -146,9 +116,10 @@ export default function Breadcrumb({
 
     const treeLayout = d3.tree<TreeNode>().nodeSize([22, STYLE.depthSpacing]);
 
-    const root = d3.hierarchy(data) as D3Node;
+    const root = d3.hierarchy(initialData) as D3Node;
     root.x0 = 0;
     root.y0 = 0;
+    rootRef.current = root
 
     let uid = 0;
 
@@ -186,6 +157,7 @@ export default function Breadcrumb({
         if (id === hoveredId) return "1";
         return activeIds.has(id) ? "1" : "0.5";
       });
+      console.log(activeIds)
 
       linkSelection.style("opacity", (d) => {
         if (!hasActive) return "1";
@@ -258,6 +230,29 @@ export default function Breadcrumb({
 
     // ── update ────────────────────────────────────────────────────────────
     function update(source: D3Node) {
+    // x, y, id 저장
+      const posMap = new Map<string, { x: number; y: number; id: any }>();
+      (root as d3.HierarchyNode<TreeNode>).descendants().forEach((d: any) => {
+        if (d.data.lemma) posMap.set(d.data.lemma, { x: d.x ?? 0, y: d.y ?? 0, id: d.id });
+      });
+
+      const newHierarchy = d3.hierarchy(root.data) as D3Node;
+      newHierarchy.each((d: D3Node) => {
+        const pos = posMap.get(d.data.lemma);
+        d.x0 = pos?.x ?? 0;
+        d.y0 = pos?.y ?? 0;
+        if (pos?.id) d.id = pos.id; // id 복원
+      });
+      Object.assign(root, newHierarchy);
+
+      // activeNodeRef도 새 hierarchy의 노드로 교체
+      if (activeNodeRef.current) {
+        const newActive = (root as d3.HierarchyNode<TreeNode>)
+          .descendants()
+          .find(d => d.id === activeNodeRef.current!.id) as D3Node | undefined;
+        if (newActive) activeNodeRef.current = newActive;
+      }
+
       treeLayout(root as d3.HierarchyNode<TreeNode>);
       const nodes = (root as d3.HierarchyNode<TreeNode>).descendants() as D3Node[];
       const links = (root as d3.HierarchyNode<TreeNode>).links();
@@ -395,6 +390,34 @@ export default function Breadcrumb({
     return () => ro.disconnect();
   }, [setActive]);
 
+  useImperativeHandle(ref, () => ({
+    addNode: (parentLemma: string, newNode: TreeNode) => {
+      const root = rootRef.current;
+      if (!root) return;
+
+      // 전체 그래프에서 같은 lemma가 있는지 먼저 확인
+      const existing = (root as d3.HierarchyNode<TreeNode>)
+        .descendants()
+        .find(d => d.data.lemma === newNode.lemma);
+
+      if (existing) {
+        setActive(existing as D3Node);
+        return;
+      }
+
+      const targetData = findInData(root.data, parentLemma);
+      if (!targetData) return;
+      targetData.children = [...(targetData.children ?? []), newNode];
+
+      updateRef.current?.(root);
+
+      const newTarget = rootRef.current!
+        .descendants()
+        .find(d => d.data.lemma === newNode.lemma && d.parent?.data.lemma === parentLemma);
+      if (newTarget) setActive(newTarget as D3Node);
+    }
+  }));
+
   useEffect(() => {
     if (updateRef.current) {
       updateRef.current(activeNodeRef.current ?? ({} as D3Node));
@@ -402,10 +425,10 @@ export default function Breadcrumb({
   }, [activeNode]);
 
   return (
-    <div className="relative w-auto h-auto p-5">
+    <div className="relative w-full h-auto">
       <div
         ref={containerRef}
-        className="relative bg-[#e7e9e8] rounded-3xl shadow-inner drop-shadow-sm"
+        className="relative bg-[#e7e9e8] rounded-3xl shadow-inner"
         style={{
           width: "100%",
           height: "200px",
@@ -420,4 +443,6 @@ export default function Breadcrumb({
       </div>
     </div>
   );
-}
+});
+
+export default Breadcrumb;

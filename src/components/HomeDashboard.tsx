@@ -1,10 +1,10 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Breadcrumb, { type D3Node } from "./breadcrumb/Breadcrumb";
 import Desk from "./desk/Desk";
 import SystemMenu from "./SystemMenu";
-import type { LayoutData } from "../types";
+import type { LayoutData, TreeNode } from "../types";
 
-
+// corpus fragment도 나중에 db에서가져와야함.
 const exampleCFData: LayoutData = {
   id: 'cf',
   type: 'corpusFragment',
@@ -18,55 +18,44 @@ const exampleCFData: LayoutData = {
 }
 
 export default function HomeDashboard() {
+  const breadcrumbRef = useRef<{ addNode: (parentLemma: string, newNode: TreeNode) => void }>(null);
+
   const [activeNode, setActiveNode] = useState<D3Node | null>(null);
-  const [isOverTrash, setIsOverTrash] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
   const [layouts, setLayouts] = useState<LayoutData[]>([exampleCFData]);
-  const [activeId, setActiveId] = useState<string | null>(null);
-
-  const handleDragPosition = useCallback((x: number, y: number) => {
-    const h = window.innerHeight;
-    setIsOverTrash(x <= 200 && h - y <= 200);
-  }, []);
-
-  const handleDragStart = useCallback(() => setIsDragging(true), []);
-
-  const handleDragEnd = useCallback((id: string) => {
-    setIsDragging(false);
-    if (isOverTrash) {
-      setLayouts(prev => {
-        const next = prev.filter(l => l.id !== id);
-        console.log('삭제 후 layouts:', next); // 여기서 찍기
-        return next;
-      });
-      setActiveNode(null);
-      setActiveId(null);
-    }
-    setIsOverTrash(false);
-  }, [isOverTrash]);
+  const [activeId, setActiveId] = useState<string | null>('cf');
 
   const addLayout = useCallback((layout: LayoutData) => {
     setLayouts(prev => {
+      if (layout.id === "cf") return prev;
       if (prev.find(l => l.id === layout.id)) return prev;
       return [...prev, layout];
     });
     setActiveId(layout.id);
   }, []);
 
+  // breadcrumb 클릭
+  useEffect(() => {
+    if (activeNode?.data.lemma === "base") setActiveId('cf');
+  }, [activeNode])
+
+  const handleTokenSelect = (rawToken: string) => {
+    const parentLemma = activeNode?.data.lemma ?? "base";
+    breadcrumbRef.current?.addNode(parentLemma, { lemma: rawToken });
+    console.log(parentLemma, rawToken, layouts)
+  };
+
   return (
-    <div className="absolute w-screen h-screen">
-      <SystemMenu isOverTrash={isOverTrash} isDragging={isDragging} />
-      <div className="font-xtypewriter">
-        <Breadcrumb activeNode={activeNode} setActiveNode={setActiveNode} />
+    <div >
+      <SystemMenu />
+      <div className="absolute w-screen h-screen font-xtypewriter flex flex-col p-6 gap-6">
+        <Breadcrumb ref={breadcrumbRef} activeNode={activeNode} setActiveNode={setActiveNode} />
         <Desk
           activeNode={activeNode}
           layouts={layouts}
           activeId={activeId}
           setActiveId={setActiveId}
           addLayout={addLayout}
-          onDragPosition={handleDragPosition}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
+          onSelect={handleTokenSelect}
         />
       </div>
     </div>

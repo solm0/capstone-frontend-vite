@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import CorpusFragment from "./CorpusFragment";
 import LemmaExpansion from "./LemmaExpansion";
 import type { LayoutData } from "../../types";
@@ -10,22 +10,18 @@ export default function Desk({
   activeId,
   setActiveId,
   addLayout,
-  onDragPosition,
-  onDragStart,
-  onDragEnd,
+  onSelect,
 }: {
   activeNode: D3Node | null;
   layouts: LayoutData[];
   activeId: string | null;
   setActiveId: (id: string) => void;
   addLayout: (layout: LayoutData) => void;
-  onDragPosition: (x: number, y: number) => void;
-  onDragStart: () => void;
-  onDragEnd: (id: string) => void;
+  onSelect: (rawToken: string) => void;
 }) {
   useEffect(() => {
-    if (!activeNode?.data.lemma) return;
-
+    if (!activeNode?.data.lemma || activeNode.data.lemma === "base") return;
+    
     const exampleLEData: LayoutData = {
       id: activeNode.data.lemma,
       type: 'lemmaExpansion',
@@ -54,34 +50,16 @@ export default function Desk({
     addLayout(exampleLEData);
   }, [activeNode]);
 
-  return (
-    <>
-      {layouts.map((l, i) => {
-        const isActive = l.id === activeId;
-        const sharedProps = {
-          setActiveId,
-          onDragPosition,
-          onDragStart,
-          onDragEnd,
-        };
+  const layout = layouts.find(l => l.id === activeId)
 
-        switch (l.type) {
-          case 'corpusFragment':
-            return (
-              <div key={l.id} style={{ position: 'absolute', zIndex: isActive ? 999 : i }}>
-                <CorpusFragment data={l.content} {...sharedProps} />
-              </div>
-            );
-          case 'lemmaExpansion':
-            return (
-              <div key={l.id} style={{ position: 'absolute', zIndex: isActive ? 999 : i }}>
-                <LemmaExpansion data={l.content} {...sharedProps} />
-              </div>
-            );
-          default:
-            return null;
-        }
-      })}
-    </>
+  let component:ReactNode | null;
+  if (layout?.type === 'corpusFragment') component = <CorpusFragment data={layout.content} setActiveId={setActiveId} onSelect={onSelect} />
+  else if (layout?.type === 'lemmaExpansion') component = <LemmaExpansion data={layout.content} setActiveId={setActiveId} onSelect={onSelect} />
+  else component = <div>wrong layout type</div>
+
+  return (
+    <div className="w-full h-full flex items-center justify-center">
+      {component}
+    </div>
   );
 }
