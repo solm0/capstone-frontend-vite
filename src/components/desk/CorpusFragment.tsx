@@ -55,7 +55,7 @@ export default function CorpusFragment({
     >
       {/* 본문 */}
       <div
-        className="flex flex-col rounded-sm gap-10 w-[600px] bg-[#ffffffde] backdrop-blur-lg"
+        className="flex flex-col rounded-sm gap-10 w-[600px] bg-[#ffffff] drop-shadow-md"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}

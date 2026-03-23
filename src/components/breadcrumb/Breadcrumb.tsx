@@ -9,14 +9,14 @@ const STYLE = {
 
   circleRInner:        3,
   circleRHover:        4.5,
-  circleColorInternal: "#555",
+  circleColorInternal: "#585a5c",
   circleColorLeaf:     "#E5FF00",
 
-  textColor:           "#44403c",
+  textColor:           "#585a5c",
   textHaloColor:       "#e7e5e4",
   textHaloWidth:       3,
 
-  linkColor:           "#d6d3cd",
+  linkColor:           "#585a5c",
   linkWidth:           1,
 
   duration:            280,
@@ -70,7 +70,6 @@ const data: TreeNode = {
 export type D3Node = d3.HierarchyPointNode<TreeNode> & {
   x0?: number;
   y0?: number;
-  _children?: D3Node["children"];
 };
 
 // ── 컴포넌트 ─────────────────────────────────────────────────────────────────
@@ -83,9 +82,7 @@ export default function Breadcrumb({
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef       = useRef<SVGSVGElement>(null);
 
-  // activeNode state + ref 브릿지 (D3 클로저에서 최신 값 참조용)
   const activeNodeRef = useRef<D3Node | null>(null);
-  // D3 update 함수를 외부에서 호출하기 위한 ref
   const updateRef = useRef<((source: D3Node) => void) | null>(null);
 
   const setActive = useCallback((node: D3Node | null) => {
@@ -106,10 +103,11 @@ export default function Breadcrumb({
 
     // ── zoom / pan 설정 ────────────────────────────────────────────────────
     svg.append("defs").html(`
-      <pattern id="dotgrid" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
-        <circle cx="12" cy="12" r="1.2" fill="#c8c5be"/>
-      </pattern>
-    `);
+    <pattern id="dotgrid" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
+      <line x1="12" y1="0" x2="12" y2="24" stroke="#d7d9d8" stroke-width="1"/>
+      <line x1="0" y1="12" x2="24" y2="12" stroke="#d7d9d8" stroke-width="1"/>
+    </pattern>
+  `);
 
     const zoomG = svg.append("g").attr("class", "zoom-layer");
 
@@ -123,14 +121,12 @@ export default function Breadcrumb({
       .scaleExtent([0.15, 4])
       .on("zoom", (event) => {
         zoomG.attr("transform", event.transform);
-
-      svg.select("#dotgrid")
-       .attr("patternTransform", event.transform.toString());
+        svg.select("#dotgrid")
+          .attr("patternTransform", event.transform.toString());
       });
 
     svg
       .call(zoom)
-      // 더블클릭으로 zoom reset
       .on("dblclick.zoom", () => {
         svg.transition().duration(400)
           .call(zoom.transform, d3.zoomIdentity)
@@ -139,7 +135,6 @@ export default function Breadcrumb({
           });
       });
 
-    // 초기 transform: 원래 MARGIN 만큼 이동
     svg.call(
       zoom.transform,
       d3.zoomIdentity.translate(MARGIN.left, MARGIN.top)
@@ -155,15 +150,6 @@ export default function Breadcrumb({
     root.x0 = 0;
     root.y0 = 0;
 
-    function collapse(d: D3Node) {
-      if (d.children) {
-        d._children = d.children;
-        d._children.forEach(collapse);
-        d.children = undefined;
-      }
-    }
-    root.children?.forEach(collapse);
-
     let uid = 0;
 
     function diagonal(s: { x: number; y: number }, t: { x: number; y: number }) {
@@ -174,7 +160,7 @@ export default function Breadcrumb({
     }
 
     function isInternal(d: D3Node) {
-      return !!(d.children || d._children);
+      return !!d.children;
     }
 
     function getActivePath(active: D3Node | null): Set<string> {
@@ -205,37 +191,23 @@ export default function Breadcrumb({
         if (!hasActive) return "1";
         const sourceId = (d.source as D3Node).id as unknown as string;
         const targetId = (d.target as D3Node).id as unknown as string;
-        return activeIds.has(sourceId) && activeIds.has(targetId) ? "1" : "0.5";
+        return activeIds.has(sourceId) && activeIds.has(targetId) ? "1" : "0.4";
       });
     }
 
-    const BTN_W = 20, BTN_H = 20, BTN_GAP = 4;
+    const BTN_W = 20, BTN_H = 20;
     const BTN_OFFSET_X = -30;
     const BTN_OFFSET_Y = -30;
 
     const fo = nodeGroup.append("foreignObject")
-      .attr("width", BTN_W * 2 + BTN_GAP)
+      .attr("width", BTN_W)
       .attr("height", BTN_H)
       .attr("x", 0).attr("y", 0)
       .style("display", "none")
       .style("pointer-events", "all");
 
     const foDiv = fo.append("xhtml:div")
-      .style("display", "flex")
-      .style("gap", `${BTN_GAP}px`);
-
-    const actionBtn = foDiv.append("xhtml:button")
-      .style("width",  `${BTN_W}px`)
-      .style("height", `${BTN_H}px`)
-      .style("border", "1px solid #d6d3cd")
-      .style("border-radius", "4px")
-      .style("background", "#fafaf9")
-      .style("cursor", "pointer")
-      .style("font-size", "11px")
-      .style("color", "#44403c")
-      .style("padding", "0")
-      .style("line-height", "1")
-      .text("★");
+      .style("display", "flex");
 
     const deleteBtn = foDiv.append("xhtml:button")
       .style("width",  `${BTN_W}px`)
@@ -258,7 +230,7 @@ export default function Breadcrumb({
       if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
       hoveredNode = d;
       fo
-        .attr("width", BTN_W * 2 + BTN_GAP)
+        .attr("width", BTN_W)
         .attr("x", d.y + BTN_OFFSET_X)
         .attr("y", d.x + BTN_OFFSET_Y)
         .style("display", null);
@@ -274,15 +246,6 @@ export default function Breadcrumb({
     fo.on("mouseenter", () => {
       if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
     }).on("mouseleave", scheduleHide);
-
-    actionBtn.on("click", (event) => {
-      event.stopPropagation();
-      if (!hoveredNode) return;
-      setActive(hoveredNode);
-      fo.style("display", "none");
-      hoveredNode = null;
-      hoveredId = null;
-    });
 
     deleteBtn.on("click", (event) => {
       event.stopPropagation();
@@ -301,7 +264,6 @@ export default function Breadcrumb({
 
       nodes.forEach((d) => { d.y = d.depth * STYLE.depthSpacing; });
 
-      // SVG 크기는 컨테이너 크기로 고정 (pan/zoom이 있으므로 컨텐츠 크기로 키울 필요 없음)
       svg
         .attr("width",  container.clientWidth)
         .attr("height", container.clientHeight);
@@ -377,17 +339,10 @@ export default function Breadcrumb({
         .attr("text-anchor", (d) => (isInternal(d) ? "end" : "start"));
 
       nodeUpdate.on("click", (_event, d) => {
-        if (d.children) {
-          d._children = d.children;
-          d.children  = undefined;
-        } else if (d._children) {
-          d.children  = d._children;
-          d._children = undefined;
-        }
         fo.style("display", "none");
         hoveredNode = null;
         hoveredId = null;
-        update(d);
+        setActive(d);
       });
 
       nodeUpdate
@@ -440,7 +395,6 @@ export default function Breadcrumb({
     return () => ro.disconnect();
   }, [setActive]);
 
-  // activeNode state가 바뀔 때 D3 업데이트 트리거
   useEffect(() => {
     if (updateRef.current) {
       updateRef.current(activeNodeRef.current ?? ({} as D3Node));
@@ -451,7 +405,7 @@ export default function Breadcrumb({
     <div className="relative w-auto h-auto p-5">
       <div
         ref={containerRef}
-        className="relative border bg-stone-100 rounded-3xl"
+        className="relative bg-[#e7e9e8] rounded-3xl shadow-inner drop-shadow-sm"
         style={{
           width: "100%",
           height: "200px",

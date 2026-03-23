@@ -63,7 +63,7 @@ export default function LemmaExpansion({
     >
       {/* 본문 */}
       <div
-        className="flex flex-col rounded-sm gap-10 w-[800px] bg-[#fbffebde] backdrop-blur-lg"
+        className="flex flex-col gap-10 w-[800px] bg-[#d7d9d8] border border-[#585a5c] drop-shadow-md"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
