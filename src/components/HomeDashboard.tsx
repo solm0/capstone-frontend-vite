@@ -41,7 +41,6 @@ export default function HomeDashboard() {
   const handleTokenSelect = (rawToken: string) => {
     const parentLemma = activeNode?.data.lemma ?? "base";
     breadcrumbRef.current?.addNode(parentLemma, { lemma: rawToken });
-    console.log(parentLemma, rawToken, layouts)
   };
 
   return (

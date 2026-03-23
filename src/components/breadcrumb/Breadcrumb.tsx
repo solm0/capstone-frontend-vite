@@ -63,7 +63,56 @@ const Breadcrumb = forwardRef<
     }
   }, []);
 
+  // -- 컨트롤 ─────────────────────────────────────────────────────────────────
+  const handleGotoBase = useCallback(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    setActive(root);
+  }, [setActive]);
+
+  const handlePrune = useCallback(() => {
+    const root = rootRef.current;
+    if (!root || !activeNodeRef.current) return;
+
+    // activeNode의 조상 lemma 집합 (activeNode 포함)
+    const activeAncestorLemmas = new Set(
+      activeNodeRef.current
+        ? (activeNodeRef.current.ancestors() as D3Node[]).map((n) => n.data.lemma)
+        : ["base"]
+    );
+
+    // 재귀적으로 조상 경로에 없는 자식들을 제거
+    function pruneNode(data: TreeNode): TreeNode {
+      if (!data.children) return data;
+      const kept = data.children
+        .filter((c) => activeAncestorLemmas.has(c.lemma))
+        .map(pruneNode);
+      data.children = kept.length > 0 ? kept : undefined;
+      return data;
+    }
+
+    pruneNode(root.data);
+    updateRef.current?.(root);
+  }, []);
+
+  const handlePurge = useCallback(() => {
+    const root = rootRef.current;
+    if (!root) return;
+
+    root.data.children = undefined;
+
+    // activeNode가 base가 아니었으면 base로
+    setActive(root);
+    updateRef.current?.(root);
+  }, [setActive]);
+
+  // ─────────────────────────────────────────────────────────────────
   useEffect(() => {
+    let root = d3.hierarchy(initialData) as D3Node;
+      root.x0 = 0;
+      root.y0 = 0;
+      rootRef.current = root;
+    
     const el        = svgRef.current;
     const container = containerRef.current;
     if (!el || !container) return;
@@ -115,11 +164,6 @@ const Breadcrumb = forwardRef<
     const nodeGroup = g.append("g");
 
     const treeLayout = d3.tree<TreeNode>().nodeSize([22, STYLE.depthSpacing]);
-
-    const root = d3.hierarchy(initialData) as D3Node;
-    root.x0 = 0;
-    root.y0 = 0;
-    rootRef.current = root
 
     let uid = 0;
 
@@ -199,6 +243,7 @@ const Breadcrumb = forwardRef<
     let hideTimer: ReturnType<typeof setTimeout> | null = null;
 
     function showButtons(d: D3Node) {
+      if (d.data.lemma === "base") return;
       if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
       hoveredNode = d;
       fo
@@ -222,39 +267,69 @@ const Breadcrumb = forwardRef<
     deleteBtn.on("click", (event) => {
       event.stopPropagation();
       if (!hoveredNode) return;
-      console.log("delete node:", hoveredNode.data.lemma);
+      const targetNode = hoveredNode;
       fo.style("display", "none");
       hoveredNode = null;
       hoveredId = null;
+
+      // 부모 찾기
+      const parent = targetNode.parent as D3Node | null;
+      if (!parent) return; // base면 삭제 불가
+
+      // data에서 자식 제거
+      const parentData = parent.data;
+      console.log(parentData)
+      parentData.children = (parentData.children ?? []).filter(
+        (c) => c.lemma !== targetNode.data.lemma
+      );
+      if (parentData.children.length === 0) {
+        console.log(rootRef)
+        parentData.children = undefined;
+      }
+
+      // activeNode가 삭제되는 노드 혹은 그 자손이면 → 부모로 이동
+      const deletedLemma = targetNode.data.lemma;
+      const activeAncestors = activeNodeRef.current
+        ? (activeNodeRef.current.ancestors() as D3Node[]).map(a => a.data.lemma)
+        : [];
+      if (activeAncestors.includes(deletedLemma)) {
+        setActive(parent);
+      }
+
+      updateRef.current?.(parent);
     });
 
     // ── update ────────────────────────────────────────────────────────────
     function update(source: D3Node) {
-    // x, y, id 저장
+
+      // data가 변경된 경우(추가/삭제) hierarchy를 완전히 재구성
+      const rebuilt = d3.hierarchy(rootRef.current!.data) as D3Node;
+      
+      // 기존 노드의 x0/y0/id를 lemma 기준으로 이식
       const posMap = new Map<string, { x: number; y: number; id: any }>();
-      (root as d3.HierarchyNode<TreeNode>).descendants().forEach((d: any) => {
+      (rootRef.current as d3.HierarchyNode<TreeNode>).descendants().forEach((d: any) => {
         if (d.data.lemma) posMap.set(d.data.lemma, { x: d.x ?? 0, y: d.y ?? 0, id: d.id });
       });
-
-      const newHierarchy = d3.hierarchy(root.data) as D3Node;
-      newHierarchy.each((d: D3Node) => {
+      rebuilt.each((d: D3Node) => {
         const pos = posMap.get(d.data.lemma);
         d.x0 = pos?.x ?? 0;
         d.y0 = pos?.y ?? 0;
-        if (pos?.id) d.id = pos.id; // id 복원
+        if (pos?.id) d.id = pos.id;
       });
-      Object.assign(root, newHierarchy);
-
-      // activeNodeRef도 새 hierarchy의 노드로 교체
+      
+      // root 자체를 rebuilt로 교체 (Object.assign 대신 rootRef 갱신)
+      rootRef.current = rebuilt;
+      const root = rebuilt; // 이하 코드에서 root 참조 교체
+      
+      // activeNode를 새 hierarchy에서 찾아 교체
       if (activeNodeRef.current) {
-        const newActive = (root as d3.HierarchyNode<TreeNode>)
-          .descendants()
+        const newActive = rebuilt.descendants()
           .find(d => d.id === activeNodeRef.current!.id) as D3Node | undefined;
-        if (newActive) activeNodeRef.current = newActive;
+        activeNodeRef.current = newActive ?? null;
       }
 
-      treeLayout(root as d3.HierarchyNode<TreeNode>);
-      const nodes = (root as d3.HierarchyNode<TreeNode>).descendants() as D3Node[];
+      treeLayout(rebuilt);
+      const nodes = rebuilt.descendants() as D3Node[];
       const links = (root as d3.HierarchyNode<TreeNode>).links();
 
       nodes.forEach((d) => { d.y = d.depth * STYLE.depthSpacing; });
@@ -425,7 +500,7 @@ const Breadcrumb = forwardRef<
   }, [activeNode]);
 
   return (
-    <div className="relative w-full h-auto">
+    <div className="relative w-full h-auto flex gap-1">
       <div
         ref={containerRef}
         className="relative bg-[#e7e9e8] rounded-3xl shadow-inner"
@@ -440,6 +515,13 @@ const Breadcrumb = forwardRef<
           ref={svgRef}
           style={{ display: "block", width: "100%", height: "100%" }}
         />
+      </div>
+
+      {/* 컨트롤 */}
+      <div className="w-8 h-full flex flex-col items-center gap-1">
+        <button onClick={handleGotoBase} className="bg-[#E5FF00] w-4 h-4 hover:rounded-full" title="go to base"></button>
+        <button onClick={handlePrune} className="bg-red-500 w-4 h-4 hover:rounded-full" title="prune"></button>
+        <button onClick={handlePurge} className="bg-red-600 w-4 h-4 hover:rounded-full" title="purge"></button>
       </div>
     </div>
   );
