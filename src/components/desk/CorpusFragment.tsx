@@ -3,11 +3,10 @@ import type { CorpusFragment } from "../../types";
 import Line from "./Line";
 
 export default function CorpusFragment({
-  data, setActiveId, onDragPosition,
+  data, setActiveId
 }: {
   data: CorpusFragment;
   setActiveId: (id: string) => void;
-  onDragPosition: (x: number, y: number) => void;
 }) {
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const dragging = useRef(false);
@@ -36,17 +35,13 @@ export default function CorpusFragment({
       const nextY = origin.current.py + (e.clientY - origin.current.my);
       // 위쪽 경계: y=0 미만으로 못 나가게
       setPos({ x: nextX, y: Math.max(0, nextY) });
-
-      // 카드의 좌상단 기준으로 전달 (또는 e.clientX/Y로 포인터 위치 사용)
-      onDragPosition(e.clientX, Math.max(0, e.clientY));
     },
-    [onDragPosition]
+    []
   );
 
   const onPointerUp = useCallback(() => {
     dragging.current = false;
-    onDragPosition(-1, -1);  // 영역 밖으로 리셋
-  }, [onDragPosition]);
+  }, []);
 
   return (
     <div

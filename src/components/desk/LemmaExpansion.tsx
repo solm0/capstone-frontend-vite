@@ -3,10 +3,13 @@ import type { LemmaExpansion } from "../../types";
 import Line from "./Line";
 
 export default function LemmaExpansion({
-  data, setActiveId
+  data, setActiveId,  onDragPosition, onDragStart, onDragEnd
 }: {
   data: LemmaExpansion;
   setActiveId: (id: string) => void;
+  onDragPosition: (x: number, y: number) => void;
+  onDragStart: () => void;
+  onDragEnd: (id: string) => void;
 }) {
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const dragging = useRef(false);
@@ -14,7 +17,8 @@ export default function LemmaExpansion({
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
-      setActiveId(data.lemma)
+      setActiveId(data.lemma);
+      onDragStart();
 
       e.currentTarget.setPointerCapture(e.pointerId);
       dragging.current = true;
@@ -35,13 +39,17 @@ export default function LemmaExpansion({
       const nextY = origin.current.py + (e.clientY - origin.current.my);
       // 위쪽 경계: y=0 미만으로 못 나가게
       setPos({ x: nextX, y: Math.max(0, nextY) });
+
+      // 카드의 좌상단 기준으로 전달 (또는 e.clientX/Y로 포인터 위치 사용)
+      onDragPosition(e.clientX, Math.max(0, e.clientY));
     },
-    []
+    [onDragPosition]
   );
 
   const onPointerUp = useCallback(() => {
     dragging.current = false;
-  }, []);
+    onDragEnd(data.lemma);
+  }, [onDragEnd]);
 
   return (
     <div
