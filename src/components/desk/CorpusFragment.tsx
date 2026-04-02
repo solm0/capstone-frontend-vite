@@ -1,5 +1,5 @@
 import type { CorpusFragment } from "../../types";
-import Line from "./Line";
+import LineCF from "./LineCF";
 
 export default function CorpusFragment({
   data, onSelect
@@ -9,10 +9,10 @@ export default function CorpusFragment({
 }) {
   return (
     <div
-      className="flex flex-col rounded-sm gap-10 w-[600px] text-xl"
+      className="pl-32 pt-32 flex flex-col rounded-sm gap-6 w-[600px]"
     >
       {data.lines.map((l, i) => (
-        <Line key={i} line={l} onSelect={onSelect} />
+        <LineCF key={i} idx={i} line={l} onSelect={onSelect} />
       ))}
     </div>
   );

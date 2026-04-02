@@ -16,20 +16,37 @@ export interface LayoutData {
 // 정보들도 다 같이 가져와야겠다 두번 왔다갔다할 필요 없잖아.
 
 export interface CorpusFragment {
-  lines: string[]
+  lines: {
+    date: string;
+    text: string;
+  }[]
 }
 
 export interface LemmaExpansion {
   lemma: string,
-  kwic: {
-    rank: number;
-    sentence: string;
-  }[],
-  relationships: {
-    synonyms: string[];
-    antonyms: string[];
-  },
-  hints: string[];
+  expansions: [
+    // 1. relationships
+    {
+      type: string,
+      content: {
+        synonyms: string[];
+        antonyms: string[];
+      }
+    },
+    // 2. kwic
+    {
+      type: string,
+      content: {
+        rank: number;
+        sentence: string;
+      }[]
+    },
+    // 3. hints
+    {
+      type: string,
+      content: string[];
+    }
+  ],
 }
 
 // breadcrumb

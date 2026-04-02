@@ -1,13 +1,18 @@
 export default function RawToken({
   rawToken,
   onSelect,
+  stress = false
 }: {
   rawToken: string;
   onSelect: (rawToken: string) => void;
+  stress?: boolean;
 }) {
   return (
-    <div className="px-1 cursor-pointer h-7 opacity-80 hover:opacity-100 hover:drop-shadow-sm transition-all duration-300 hover:font-tx" onClick={() => onSelect(rawToken)}>
+    <span
+      className={`cursor-pointer h-6 opacity-80 inline-flex items-center hover:opacity-100 transition-all duration-300 text-xl hover:drop-shadow-md ${stress ? 'font-tx' : 'font-it hover:font-tx'}`}
+      onClick={() => onSelect(rawToken)}
+    >
       {rawToken}
-    </div>
+    </span>
   );
 }
