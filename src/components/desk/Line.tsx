@@ -9,7 +9,7 @@ export default function Line({
   const tokens = line.trim().split(/\s+/);
 
   return (
-    <div className="relative flex gap-3 w-auto h-auto">
+    <div className="relative flex gap-x-3 gap-y-0 w-auto h-auto flex-wrap">
         {tokens.map((t, i) => (
           <RawToken key={i} rawToken={t} onSelect={onSelect} />
         ))}

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Breadcrumb, { type D3Node } from "./breadcrumb/Breadcrumb";
 import Desk from "./desk/Desk";
 import SystemMenu from "./SystemMenu";
-import type { LayoutData, TreeNode } from "../types";
+import type { LayoutData, TreeNode, User } from "../types";
 
 // corpus fragment도 나중에 db에서가져와야함.
 const exampleCFData: LayoutData = {
@@ -12,12 +12,16 @@ const exampleCFData: LayoutData = {
     lines: [
       'Теперь не умирают от любви —',
       'насмешливая трезвая эпоха.',
-      // 'Лишь падает гемоглобин в крови,',
+      'Лишь падает гемоглобин в крови,',
     ]
   }
 }
 
-export default function HomeDashboard() {
+export default function HomeDashboard({
+  user
+}: {
+  user: User | null;
+}) {
   const breadcrumbRef = useRef<{ addNode: (parentLemma: string, newNode: TreeNode) => void }>(null);
 
   const [activeNode, setActiveNode] = useState<D3Node | null>(null);
@@ -45,9 +49,9 @@ export default function HomeDashboard() {
   };
 
   return (
-    <div >
-      <SystemMenu />
-      <div className="absolute w-screen h-screen font-xtypewriter flex flex-col p-6 gap-6">
+    <>
+      <SystemMenu user={user} />
+      <div className="absolute w-screen h-screen font-it flex flex-col gap-3">
         <Breadcrumb ref={breadcrumbRef} activeNode={activeNode} setActiveNode={setActiveNode} />
         <Desk
           activeNode={activeNode}
@@ -57,6 +61,6 @@ export default function HomeDashboard() {
           onSelect={handleTokenSelect}
         />
       </div>
-    </div>
+    </>
   )
 }

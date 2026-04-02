@@ -1,6 +1,6 @@
 // @ts-nocheck
 
-import { useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from "react";
+import { useEffect, useRef, useCallback, useImperativeHandle, forwardRef, useState } from "react";
 import * as d3 from "d3";
 import type { TreeNode } from "../../types";
 
@@ -15,7 +15,7 @@ function findInData(node: TreeNode, lemma: string): TreeNode | null {
 
 // ── 스타일 변수 ──────────────────────────────────────────────────────────────
 const STYLE = {
-  font:                "'xtypewriter', monospace",
+  font:                "'cmuntt', monospace",
   fontSize:            "15px",
 
   circleRInner:        3,
@@ -34,7 +34,7 @@ const STYLE = {
   depthSpacing:        160,
 };
 
-const MARGIN = { top: 32, right: 120, bottom: 32, left: 100 };
+const MARGIN = { top: 80, right: 100, bottom: 50, left: 100 };
 
 // ── 데이터 ───────────────────────────────────────────────────────────────────
 export type D3Node = d3.HierarchyPointNode<TreeNode> & {
@@ -56,6 +56,7 @@ const Breadcrumb = forwardRef<
 
   const activeNodeRef = useRef<D3Node | null>(null);
   const updateRef = useRef<((source: D3Node) => void) | null>(null);
+  const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
 
   const setActive = useCallback((node: D3Node | null) => {
     activeNodeRef.current = node;
@@ -65,11 +66,24 @@ const Breadcrumb = forwardRef<
     }
   }, []);
 
+  const [expanded, setExpanded] = useState(false);
+
   // -- 컨트롤 ─────────────────────────────────────────────────────────────────
   const handleGotoBase = useCallback(() => {
     const root = rootRef.current;
     if (!root) return;
     setActive(root);
+
+    const svgEl = svgRef.current;
+    if (svgEl && zoomRef.current) {
+      d3.select(svgEl)
+        .transition()
+        .duration(400)
+        .call(
+          zoomRef.current.transform,
+          d3.zoomIdentity.translate(MARGIN.left, MARGIN.top)
+        );
+    }
   }, [setActive]);
 
   const handlePrune = useCallback(() => {
@@ -139,12 +153,13 @@ const Breadcrumb = forwardRef<
       .attr("fill", "url(#dotgrid)");
 
     const zoom = d3.zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.15, 4])
+      .scaleExtent([0.5, 3])
       .on("zoom", (event) => {
         zoomG.attr("transform", event.transform);
         svg.select("#dotgrid")
           .attr("patternTransform", event.transform.toString());
       });
+    zoomRef.current = zoom;
 
     svg
       .call(zoom)
@@ -489,6 +504,33 @@ const Breadcrumb = forwardRef<
         .descendants()
         .find(d => d.data.lemma === newNode.lemma && d.parent?.data.lemma === parentLemma);
       if (newTarget) setActive(newTarget as D3Node);
+
+      // update 후 새 노드 위치로 이동
+      setTimeout(() => {
+        const newTarget = rootRef.current!
+          .descendants()
+          .find(d => d.data.lemma === newNode.lemma && d.parent?.data.lemma === parentLemma) as D3Node | undefined;
+
+        if (newTarget && svgRef.current && zoomRef.current) {
+          const svgEl = svgRef.current;
+          const container = containerRef.current;
+          if (!container) return;
+
+          const currentTransform = d3.zoomTransform(svgEl);
+          const targetX = -(newTarget.y ?? 0) * currentTransform.k + container.clientWidth / 2;
+          const targetY = -(newTarget.x ?? 0) * currentTransform.k + container.clientHeight / 2;
+
+          d3.select(svgEl)
+            .transition()
+            .duration(400)
+            .call(
+              zoomRef.current.transform,
+              d3.zoomIdentity
+                .translate(targetX, targetY)
+                .scale(currentTransform.k)  // 현재 줌 레벨 유지
+            );
+        }
+      }, 50); // layout 계산 후 실행
     }
   }));
 
@@ -499,28 +541,41 @@ const Breadcrumb = forwardRef<
   }, [activeNode]);
 
   return (
-    <div className="relative w-full h-auto flex gap-1">
-      <div
-        ref={containerRef}
-        className="relative bg-[#e7e9e8] rounded-3xl shadow-inner"
-        style={{
-          width: "100%",
-          height: "200px",
-          overflow: "hidden",
-          cursor: "grab",
-        }}
-      >
-        <svg
-          ref={svgRef}
-          style={{ display: "block", width: "100%", height: "100%" }}
-        />
-      </div>
+    <div
+      ref={containerRef}
+      className="relative w-full h-auto border-b border-gray-800"
+      style={{
+        width: "100%",
+        height: expanded ? "600px" : "200px",
+        overflow: "hidden",
+        cursor: "grab",
+      }}
+    >
+      <svg
+        ref={svgRef}
+        style={{ display: "block", width: "100%", height: "100%" }}
+      />
 
       {/* 컨트롤 */}
-      <div className="w-8 h-full flex flex-col items-center gap-1">
-        <button onClick={handleGotoBase} className="bg-[#E5FF00] w-4 h-4 hover:rounded-full" title="go to base"></button>
-        <button onClick={handlePrune} className="bg-red-500 w-4 h-4 hover:rounded-full" title="prune"></button>
-        <button onClick={handlePurge} className="bg-red-600 w-4 h-4 hover:rounded-full" title="purge"></button>
+      <div className="absolute right-2 top-0 py-2 h-full flex flex-col justify-between text-xs font-tt">
+        <div className="flex flex-col items-end gap-1">
+          <button onClick={handleGotoBase} className="flex w-auto gap-2 group" title="go to base">
+            <span>go to base</span>
+            <div className="bg-[#E5FF00] w-4 aspect-square group-hover:rounded-full"></div>
+          </button>
+          <button onClick={handlePrune} className="flex w-auto gap-2 group" title="prune">
+            <span>prune</span>
+            <div className="bg-gray-600 w-4 aspect-square group-hover:rounded-full"></div>
+          </button>
+          <button onClick={handlePurge} className="flex w-auto gap-2 group" title="purge">
+            <span>purge</span>
+            <div className="bg-gray-700 w-4 aspect-square group-hover:rounded-full"></div>
+          </button>
+        </div>
+
+        <button onClick={() => setExpanded(!expanded)} className={`${expanded ? '-rotate-90' : 'rotate-90'} text-lg`}>
+          &gt;
+        </button>
       </div>
     </div>
   );

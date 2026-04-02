@@ -8,8 +8,10 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        xtypewriter: ['xtypewriter', 'monospace'],
-        rursus: ['rursus', 'monospace'],
+        tt: ['cmuntt', 'monospace'],
+        it: ['cmunit', 'monospace'],
+        tb: ['cmuntb', 'monospace'],
+        tx: ['cmuntx', 'monospace'],
       },
     },
   },

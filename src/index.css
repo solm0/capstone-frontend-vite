@@ -1,28 +1,37 @@
 @font-face {
-  font-family: 'xtypewriter';
-  src: url('/xtypewriter.woff2') format('woff2');
-  font-weight: 400;
+  font-family: 'cmuntt';
+  src: url('/cmuntt.woff') format('woff');
+  font-weight: normal;
   font-style: normal;
 }
 
 @font-face {
-  font-family: 'rursus';
-  src: url('/rursus.ttf') format('truetype');
-  font-weight: 400;
+  font-family: 'cmuntb';
+  src: url('/cmuntb.woff') format('woff');
+  font-weight: bold;
   font-style: normal;
+}
+
+@font-face {
+  font-family: 'cmunit';
+  src: url('/cmunit.woff') format('woff');
+  font-weight: normal;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: 'cmuntx';
+  src: url('/cmuntx.woff') format('woff');
+  font-weight: bold;
+  font-style: italic;
 }
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@theme {
-  --font-xtypewriter: 'xtypewriter', monospace;
-  --font-rursus: 'rursus', monospace;
-}
-
 :root {
-  --text: #6b6375;
+  --text: #3b3345;
   --text-h: #08060d;
   --bg: #fff;
   --border: #e5e4e7;
@@ -78,53 +87,9 @@
 }
 
 body {
-  background-color: #d7d9d8;
   margin: 0;
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
 p {
   margin: 0;
-}
-
-.custom-scrollbar::-webkit-scrollbar {
-  width: 3px;
-  height: 3px;
-}
-
-.custom-scrollbar:hover::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  @apply bg-transparent;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background-color: #d6d3cd50;
 }

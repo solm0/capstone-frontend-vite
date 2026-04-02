@@ -35,8 +35,13 @@ export async function resetPassword(token:string,new_password:string){
 export async function verifyToken() {
   const token = localStorage.getItem("token")
   if (!token) return false
+
   const res = await fetch(API+"/me", {
     headers: { Authorization: `Bearer ${token}` }
   })
-  return res.ok
+
+  if (!res.ok) return null
+
+  const data = await res.json()
+  return data   // { id, email }
 }

@@ -9,7 +9,7 @@ export default function CorpusFragment({
 }) {
   return (
     <div
-      className="flex flex-col rounded-sm gap-10 w-[600px] drop-shadow-md"
+      className="flex flex-col rounded-sm gap-10 w-[600px] text-xl"
     >
       {data.lines.map((l, i) => (
         <Line key={i} line={l} onSelect={onSelect} />

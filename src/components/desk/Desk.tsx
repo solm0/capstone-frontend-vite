@@ -60,7 +60,7 @@ export default function Desk({
   } else component = <div>wrong layout type</div>
 
   return (
-    <div className="w-full h-full flex items-center justify-center">
+    <div className="w-full h-full flex pl-32 pt-32">
       {component}
     </div>
   );

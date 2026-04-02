@@ -9,7 +9,7 @@ export default function LemmaExpansion({
 }) {
   return (
     <div
-      className="flex flex-col gap-10 w-[800px] drop-shadow-md"
+      className="flex flex-col gap-7 w-[800px] text-xl"
     >
       {data.kwic.map((k, i) => 
         <Line key={i} line={k.sentence.replace('_', data.lemma)} onSelect={onSelect} />

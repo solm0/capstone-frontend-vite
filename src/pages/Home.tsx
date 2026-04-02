@@ -1,15 +1,20 @@
 import { useEffect, useState } from "react"
 import { verifyToken } from "../api"
-import HomeNoLogin from "../components/HomeNoLogin"
 import HomeDashboard from "../components/HomeDashboard"
+import type { User } from "../types";
 
 export default function Home() {
-  const [auth, setAuth] = useState<boolean | null>(null)
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    verifyToken().then(setAuth)
+    verifyToken().then((data) => {
+      setUser(data)
+      setLoading(false)
+    })
   }, [])
 
-  if (auth === null) return <div>loading...</div>
-  return auth ? <HomeDashboard /> : <HomeNoLogin />
+  if (loading) return <div>loading...</div>
+
+  return <HomeDashboard user={user} />
 }

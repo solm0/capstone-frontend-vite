@@ -1,3 +1,9 @@
+// user
+export type User = {
+  id: number
+  email: string
+}
+
 // desk
 
 export interface LayoutData {
