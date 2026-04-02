@@ -18,12 +18,22 @@ export default function LemmaExpansion({
   else if (expansionIdx === 1) component = <LemmaKwic data={data.expansions[1].content} onSelect={onSelect} lemma={data.lemma} />
   else if (expansionIdx === 2) component = <LemmaHints data={data.expansions[2].content} onSelect={onSelect} />
 
+  const [taskOpen, setTaskOpen] = useState(false);
+
   return (
     <>
       {component}
 
+      {/* 태스크 모달 */}
+      <div className={`absolute top-0 left-0 w-screen h-screen flex items-center justify-center p-20 pointer-events-none`}>
+        <div onClick={() => setTaskOpen(false)} className={`absolute w-full h-full opacity-50 z-0 ${taskOpen ? 'bg-gray-500 pointer-events-auto' : 'bg-transparent pointer-events-none'} transition-colors duration-300`}></div>
+        {taskOpen && <div className="top-0 left-0 w-full h-full bg-gray-200 z-10 pointer-events-auto">{data.lemma}</div>}
+      </div>
+      
+
       {/* 넘어가기 버튼(임시) */}
       <div className="absolute bottom-20 right-20 flex gap-2">
+        <button onClick={() => setTaskOpen(true)} className="font-tt hover:font-tb">I know what {data.lemma} means</button>
         <button className={expansionIdx<=0 ? 'hidden' : 'block'} onClick={() => setExpansionIdx(expansionIdx-1)}>&lt;</button>
         <span>{data.expansions[expansionIdx].type}</span>
         <span>{expansionIdx+1}/3</span>
