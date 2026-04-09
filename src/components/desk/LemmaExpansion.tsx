@@ -4,6 +4,7 @@ import LemmaRelationships from "./LemmaRelationships";
 import LemmaKwic from "./LemmaKwic";
 import LemmaHints from "./LemmaHints";
 import AudioCapture from "../AudioCapture";
+import Cloze from "../Cloze";
 
 export default function LemmaExpansion({
   data, onSelect
@@ -32,6 +33,7 @@ export default function LemmaExpansion({
           <div className="top-0 left-0 w-full h-full bg-gray-200 z-10 pointer-events-auto">
             {data.lemma}
             <AudioCapture />
+            <Cloze lemma="бесконечный" pos="ADJ" />
           </div>
         }
       </div>
