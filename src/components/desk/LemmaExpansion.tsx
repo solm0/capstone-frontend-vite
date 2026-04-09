@@ -3,6 +3,7 @@ import type { LemmaExpansion } from "../../types";
 import { LemmaRelationships } from "./LemmaRelationships";
 import LemmaKwic from "./LemmaKwic";
 import { LemmaHints } from "./LemmaHints";
+import AudioCapture from "../AudioCapture";
 
 export default function LemmaExpansion({
   data, onSelect
@@ -27,7 +28,12 @@ export default function LemmaExpansion({
       {/* 태스크 모달 */}
       <div className={`absolute top-0 left-0 w-screen h-screen flex items-center justify-center p-20 pointer-events-none`}>
         <div onClick={() => setTaskOpen(false)} className={`absolute w-full h-full opacity-50 z-0 ${taskOpen ? 'bg-gray-500 pointer-events-auto' : 'bg-transparent pointer-events-none'} transition-colors duration-300`}></div>
-        {taskOpen && <div className="top-0 left-0 w-full h-full bg-gray-200 z-10 pointer-events-auto">{data.lemma}</div>}
+        {taskOpen &&
+          <div className="top-0 left-0 w-full h-full bg-gray-200 z-10 pointer-events-auto">
+            {data.lemma}
+            <AudioCapture />
+          </div>
+        }
       </div>
       
 

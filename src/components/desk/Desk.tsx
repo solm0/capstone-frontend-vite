@@ -12,7 +12,7 @@ export default function Desk({
   onSelect,
 }: {
   activeNode: D3Node | null;
-  layouts: LayoutData[];
+  layouts: LayoutData[] ;
   activeId: string | null;
   addLayout: (layout: LayoutData) => void;
   onSelect: (rawToken: string) => void;

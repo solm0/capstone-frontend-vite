@@ -33,16 +33,22 @@ export default function SystemMenu({
         </button>
         {hovered &&
           <div className=" bg-gray-200 p-4 flex flex-col w-full h-full items-start gap-1 text-sm">
+            
             <div className="w-full flex justify-between">
               <span>{user ? user.email : 'you are not logged in.'}</span>
               {user ? <Button text="logout" onClick={logout} /> : <LinkButton link="login" text="login" />}
             </div>
+
             {user &&
               <div className="w-full flex justify-between">
-                <span>acheivements</span>
-                <Button onClick={() => console.log('acheivements more clicked')} text="more" />
+                <span>achievements</span>
+                <Button onClick={() => console.log('achievements more clicked')} text="more" />
               </div>
             }
+
+            <div className="w-full flex justify-end">
+              <LinkButton link="/playground" text="playground" />
+            </div>
           </div>
         }
       </div>

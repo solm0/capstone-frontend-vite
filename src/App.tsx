@@ -5,12 +5,14 @@ import ResetPassword from "./pages/ResetPassword"
 import ResetRequest from "./pages/ResetRequest"
 import Home from "./pages/Home"
 import AuthLayout from "./components/AuthLayout"
+import Playground from "./pages/Playground"
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/playground" element={<Playground />} />
 
         <Route element={<AuthLayout />} >
           <Route path="/login" element={<Login />} />

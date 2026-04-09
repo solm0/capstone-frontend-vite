@@ -45,3 +45,17 @@ export async function verifyToken() {
   const data = await res.json()
   return data   // { id, email }
 }
+
+export async function getToday() {
+  const token = localStorage.getItem("token")
+
+  const res = await fetch(API + "/today", {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  })
+
+  if (!res.ok) throw new Error("failed to fetch today")
+
+  return res.json()
+}

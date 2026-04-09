@@ -16,7 +16,6 @@ export default function LineCF({
 }) {
   const today = formatDate(new Date())
   const tokens = line.text.trim().split(/\s+/);
-  console.log(today.length, line.date.length)
 
   return (
     <div className="relative flex gap-x-2 w-auto h-auto">
