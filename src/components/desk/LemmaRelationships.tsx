@@ -21,7 +21,7 @@ type SynMeta = { word: string; baseAngle: number; bobPhase: number };
 type AntMeta = { word: string; baseX: number; baseY: number; bobPhase: number };
 
 // ── 컴포넌트 ─────────────────────────────────────────────────────────────────
-export function LemmaRelationships({
+export default function LemmaRelationships({
   data,
   onSelect,
   lemma,

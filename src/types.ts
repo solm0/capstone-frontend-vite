@@ -39,10 +39,6 @@ export interface LemmaExpansion {
       }[]
     },
     // 3. hints
-    {
-      type: string,
-      content: string[];
-    }
   ],
 }
 

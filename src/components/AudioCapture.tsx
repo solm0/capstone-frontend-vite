@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 export default function AudioCapture() {
   const wsRef = useRef<WebSocket | null>(null);
@@ -65,7 +65,7 @@ export default function AudioCapture() {
     workletNode.port.onmessage = (event) => {
       const ws = wsRef.current;
       if (!ws || ws.readyState !== WebSocket.OPEN) return;
-      
+
       const float32 = event.data;
 
       const int16 = new Int16Array(float32.length);
