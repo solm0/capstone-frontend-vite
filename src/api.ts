@@ -59,3 +59,11 @@ export async function getToday() {
 
   return res.json()
 }
+
+export async function fetchLemma(lemma: string, pos: string) {
+  const res = await fetch(
+    `http://localhost:8000/lemma?lemma=${encodeURIComponent(lemma)}&pos=${pos}`
+  );
+  if (!res.ok) throw new Error();
+  return res.json();
+}

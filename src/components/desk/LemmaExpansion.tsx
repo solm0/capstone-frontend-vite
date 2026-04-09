@@ -10,15 +10,17 @@ export default function LemmaExpansion({
   data, onSelect
 }: {
   data: LemmaExpansion;
-  onSelect: (rawToken: string) => void;
+  onSelect: (tokenKey: string) => void;
 }) {
+  console.log(data)
+
   // relationships -> kwic -> hints
   const [expansionIdx, setExpansionIdx] = useState<number>(0);
 
   let component:ReactNode | null;
-  if (expansionIdx === 0) component = <LemmaRelationships data={data.expansions[0].content} onSelect={onSelect} lemma={data.lemma} />
-  else if (expansionIdx === 1) component = <LemmaKwic data={data.expansions[1].content} onSelect={onSelect} lemma={data.lemma} />
-  else if (expansionIdx === 2) component = <LemmaHints lemma={data.lemma} />
+  if (expansionIdx === 0) component = <LemmaRelationships data={data.expansions[0].content} onSelect={onSelect} lemma={`${data.lemma}_${data.pos}`} />
+  else if (expansionIdx === 1) component = <LemmaKwic data={data.expansions[1].content} onSelect={onSelect} lemma={`${data.lemma}_${data.pos}`} />
+  else if (expansionIdx === 2) component = <LemmaHints data={data.expansions[2].content} lemma={`${data.lemma}_${data.pos}`} />
 
   const [taskOpen, setTaskOpen] = useState(false);
 

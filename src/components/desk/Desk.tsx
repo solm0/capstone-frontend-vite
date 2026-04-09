@@ -3,6 +3,7 @@ import CorpusFragment from "./CorpusFragment";
 import LemmaExpansion from "./LemmaExpansion";
 import type { CorpusFragment as CF, LayoutData, LemmaExpansion as LE } from "../../types";
 import type { D3Node } from "../breadcrumb/Breadcrumb";
+import { fetchLemma } from "../../api";
 
 export default function Desk({
   activeNode,
@@ -15,48 +16,27 @@ export default function Desk({
   layouts: LayoutData[] ;
   activeId: string | null;
   addLayout: (layout: LayoutData) => void;
-  onSelect: (rawToken: string) => void;
+  onSelect: (tokenKey: string) => void;
 }) {
   useEffect(() => {
-    if (!activeNode?.data.lemma || activeNode.data.lemma === "base") return;
-    
-    const exampleLEData: LayoutData = {
-      id: activeNode.data.lemma,
-      type: 'lemmaExpansion',
-      content: {
-        lemma: activeNode.data.lemma,
-        expansions: [
-          {
-            // 1. relationships: syn 5개, antonym 1-2개
-            type: 'relationships',
-            content: {
-              synonyms: ['погибать', 'скончаться', 'умереть', 'дохнуть', 'гибнуть'],
-              antonyms: ['жить', 'рождаться'],
-            }
-          },
-          {
-            // 2. kwic: rank, sentense
-            type: 'kwic',
-            content: [
-              { rank: 1, sentence: 'Не мнит лишь смертный <умирать> И быть себя он вечным чает' },
-              { rank: 2, sentence: 'Раз десять на день <умирать> И говорить с самим собою.' },
-              { rank: 3, sentence: 'Окрест библейскую мораль изобразила, По коей мы должны учиться <умирать>.' },
-              { rank: 4, sentence: 'Он шел <умирать>.' },
-              { rank: 5, sentence: 'им дано понять, Какая иногда рутина Вела нас жить и <умирать>.' },
-            ]
-          },
-        ]
-      }
-    }
+    const lemma = activeNode?.data.lemma.split('_')[0];
+    const pos = activeNode?.data.lemma.split('_')[1];
+    if (!lemma || !pos || lemma === "base") return;
 
-    addLayout(exampleLEData);
-  }, [activeNode]);
+    fetchLemma(lemma, pos).then(data => {
+      addLayout({
+        id: activeNode?.data.lemma,
+        type: "lemmaExpansion",
+        content: data
+      });
+    });
+  }, [activeNode, layouts]);
 
   const layout = layouts.find(l => l.id === activeId)
 
   let component:ReactNode | null;
   if (layout?.type === 'corpusFragment') {
-    const content = layout.content as CF;
+    const content = layout.content as CF[];
     component = <CorpusFragment data={content} onSelect={onSelect} />
   } else if (layout?.type === 'lemmaExpansion') {
     const content = layout.content as LE;

@@ -1,5 +1,4 @@
-// @ts-nocheck
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
 import RawToken from "./RawToken";
 
@@ -26,8 +25,8 @@ export default function LemmaRelationships({
   onSelect,
   lemma,
 }: {
-  data: { synonyms: string[]; antonyms: string[] };
-  onSelect: (rawToken: string) => void;
+  data: { related_words: string[]; antonyms: string[] };
+  onSelect: (tokenKey: string) => void;
   lemma: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -40,7 +39,7 @@ export default function LemmaRelationships({
   const [synPositions, setSynPositions] = useState<Pos[]>([]);
   const [antPositions, setAntPositions] = useState<Pos[]>([]);
 
-  const synonyms = data.synonyms ?? [];
+  const related_words = data.related_words ?? [];
   const antonyms = data.antonyms ?? [];
 
   useEffect(() => {
@@ -52,9 +51,9 @@ export default function LemmaRelationships({
     setCenterPos({ x: cx, y: cy });
 
     // bobPhase 초기화 (lemma/data 바뀔 때만)
-    synMetaRef.current = synonyms.map((word, i) => ({
+    synMetaRef.current = related_words.map((word, i) => ({
       word,
-      baseAngle: (2 * Math.PI * i) / Math.max(synonyms.length, 1),
+      baseAngle: (2 * Math.PI * i) / Math.max(related_words.length, 1),
       bobPhase: Math.random() * Math.PI * 2,
     }));
     antMetaRef.current = antonyms.map((word, i) => {
@@ -74,11 +73,7 @@ export default function LemmaRelationships({
     svg.attr("width", W).attr("height", H);
 
     const hullLayer    = svg.append("g");
-    const synLinkLayer = svg.append("g");
     const antLinkLayer = svg.append("g");
-
-    const synLinks = synLinkLayer.selectAll("line")
-      .data(synMetaRef.current).enter().append("line")
 
     const antLinks = antLinkLayer.selectAll("line")
       .data(antMetaRef.current).enter().append("line")
@@ -138,7 +133,7 @@ export default function LemmaRelationships({
             return { p, cp1: [cp1x, cp1y] };
           });
 
-          const path = d.map(({ p, cp1 }, i) => {
+          const path = d.map(({ p }, i) => {
             const prev = d[(i - 1 + n) % n];
             // 이전 꼭짓점의 cp1을 반전시켜 cp2로 사용
             const cp2x = p[0] - (d[(i + 1) % n].p[0] - prev.p[0]) * HULL_ROUND;
@@ -162,7 +157,7 @@ export default function LemmaRelationships({
     return () => {
       if (animRef.current !== null) cancelAnimationFrame(animRef.current);
     };
-  }, [lemma, synonyms.join(","), antonyms.join(",")]);
+  }, [lemma, related_words.join(","), antonyms.join(",")]);
 
   return (
     <div
@@ -188,20 +183,20 @@ export default function LemmaRelationships({
 
       {/* 중심 lemma */}
       <NodeOverlay x={centerPos.x} y={centerPos.y}>
-        <RawToken rawToken={lemma} onSelect={onSelect} />
+        <RawToken token={{lemma: lemma.split('_')[0], pos: lemma.split('_')[1], surface:lemma.split('_')[0]}} onSelect={onSelect} />
       </NodeOverlay>
 
       {/* synonym 노드들 */}
-      {synPositions.map((pos, i) => (
-        <NodeOverlay key={synonyms[i]} x={pos.x} y={pos.y}>
-          <RawToken rawToken={synonyms[i]} onSelect={onSelect} />
+      {related_words.length != 0 && synPositions.map((pos, i) => (
+        <NodeOverlay key={related_words[i]} x={pos.x} y={pos.y}>
+          <RawToken token={{lemma: related_words[i].split('_')[0], pos: related_words[i].split('_')[1], surface:related_words[i].split('_')[0]}} onSelect={onSelect} />
         </NodeOverlay>
       ))}
 
       {/* antonym 노드들 */}
-      {antPositions.map((pos, i) => (
+      {antonyms.length != 0 && antPositions.map((pos, i) => (
         <NodeOverlay key={antonyms[i]} x={pos.x} y={pos.y}>
-          <RawToken rawToken={antonyms[i]} onSelect={onSelect} />
+          <RawToken token={{lemma: antonyms[i].split('_')[0], pos: antonyms[i].split('_')[1], surface:antonyms[i].split('_')[0]}} onSelect={onSelect} />
         </NodeOverlay>
       ))}
     </div>

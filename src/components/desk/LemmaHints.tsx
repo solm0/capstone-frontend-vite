@@ -1,5 +1,3 @@
-import { useEffect, useState } from "react";
-
 type Token =
   | { type: "text"; value: string }
   | { type: "highlight"; value: string }
@@ -61,68 +59,18 @@ function Sentence({ text }: { text: string }) {
   )
 }
 
-type Response = {
-  content: string[]
-}
-
 export default function LemmaHints({
-  lemma
+  data, lemma
 }: {
+  data: string[];
   lemma: string;
-  // pos: string;
 }) {
-  // 나중에 삭제
-  const lemma_tmp = 'бесконечный'
-  const pos_tmp = 'ADJ'
-
-  const [data, setData] = useState<Response | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
-
-  const fetchData = async () => {
-    setLoading(true)
-    setError(false)
-
-    try {
-      const res = await fetch(
-        `http://localhost:8000/hint?lemma=${encodeURIComponent(lemma_tmp)}&pos=${pos_tmp}`
-      )
-
-      if (!res.ok) throw new Error()
-
-      const json = await res.json()
-      setData(json)
-    } catch {
-      setError(true)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchData()
-  }, [lemma_tmp, pos_tmp])
-
-  if (loading) return <div>...</div>
-
-  if (error) {
-    return (
-      <div>
-        <div>앗! 오류가 났다</div>
-        <button onClick={fetchData}>retry</button>
-      </div>
-    )
-  }
-
   return (
-    <div className="pl-32 pt-32 flex flex-col gap-12 w-full items-start md:mx-20">
-      <div className="flex flex-col gap-2">
-        {data?.content.map((s, i) => (
-          <div key={i} className={i < 2 ? "opacity-70" : i < 4 ? "" : "font-medium"}>
-            <Sentence text={s} />
-          </div>
-        ))}
-      </div>
+    <div>
+      <p>{lemma}</p>
+      {data.map((s, i) => (
+        <Sentence key={i} text={s} />
+      ))}
     </div>
-  )
+  );
 }

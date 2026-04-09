@@ -1,3 +1,4 @@
+import type { CorpusFragment } from "../../types";
 import RawToken from "./RawToken";
 
 function formatDate(date: Date) {
@@ -11,11 +12,10 @@ export default function LineCF({
   idx, line, onSelect
 }: {
   idx: number;
-  line: { date: string; text: string; };
-  onSelect: (rawToken: string) => void;
+  line: CorpusFragment;
+  onSelect: (tokenKey: string) => void;
 }) {
   const today = formatDate(new Date())
-  const tokens = line.text.trim().split(/\s+/);
 
   return (
     <div className="relative flex gap-x-2 w-auto h-auto">
@@ -25,8 +25,8 @@ export default function LineCF({
         {idx}
       </div>
       <div className="flex gap-x-4 gap-y-0 w-auto h-auto flex-wrap">
-        {tokens.map((t, i) => (
-          <RawToken key={i} rawToken={t} onSelect={onSelect} />
+        {line.tokens.map((t, i) => (
+          <RawToken key={i} token={t} onSelect={onSelect} />
         ))}
       </div>
     </div>
