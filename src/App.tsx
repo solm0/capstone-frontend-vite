@@ -3,16 +3,21 @@ import Login from "./pages/Login"
 import Signup from "./pages/Signup"
 import ResetPassword from "./pages/ResetPassword"
 import ResetRequest from "./pages/ResetRequest"
-import Home from "./pages/Home"
 import AuthLayout from "./components/AuthLayout"
 import Playground from "./pages/Playground"
+import History from "./pages/History"
+import HomeLayout from "./components/HomeLayout"
+import Dashboard from "./components/Dashboard"
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/playground" element={<Playground />} />
+        <Route element={<HomeLayout />} >
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/playground" element={<Playground />} />
+          <Route path="/history" element={<History />} />
+        </Route>
 
         <Route element={<AuthLayout />} >
           <Route path="/login" element={<Login />} />

@@ -40,6 +40,12 @@ export default function SystemMenu({
             </div>
 
             {user &&
+              <div className="w-full flex justify-end">
+                <LinkButton link="/history" text="history" />
+              </div>
+            }
+
+            {user &&
               <div className="w-full flex justify-between">
                 <span>achievements</span>
                 <Button onClick={() => console.log('achievements more clicked')} text="more" />

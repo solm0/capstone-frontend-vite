@@ -67,3 +67,17 @@ export async function fetchLemma(lemma: string, pos: string) {
   if (!res.ok) throw new Error();
   return res.json();
 }
+
+export async function getHistory() {
+  const token = localStorage.getItem("token")
+
+  const res = await fetch(API + "/history", {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  })
+
+  if (!res.ok) throw new Error("failed to fetch history")
+
+  return res.json()
+}

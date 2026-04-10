@@ -408,7 +408,7 @@ const Breadcrumb = forwardRef<
         .attr("stroke-width", STYLE.textHaloWidth)
         .attr("paint-order", "stroke")
         .attr("fill", STYLE.textColor)
-        .text((d) => d.data.lemma);
+        .text((d) => d.data.lemma.split('_')[0]);
 
       const nodeUpdate = node.merge(nodeEnter);
 

@@ -11,7 +11,7 @@ export default function LemmaKwic({
     <div className="flex flex-col gap-6 w-full items-center pt-32 md:mx-20">
       <div className="absolute -translate-y-4 h-[60%] w-28">
         <div className="-z-10 w-full h-full bg-gradient-to-b from-[#E5FF00] to-transparent rounded-lg blur-sm" />
-        <span className="absolute top-4 -translate-x-1/2 -translate-y-14">{lemma}</span>
+        <span className="absolute top-4 -translate-x-1/2 -translate-y-14">{lemma.split('_')[0]}</span>
       </div>
 
       {data.map((d, i) => {

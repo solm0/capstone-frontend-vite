@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 type ClozeItem = {
   sentence: string
@@ -36,12 +36,11 @@ function shuffle<T>(arr: T[]): T[] {
 function ClozeCard({ item }: { item: ClozeItem }) {
   const answer = extractAnswer(item.sentence)
 
-  const [choices] = useState(() => {
+  const choices = useMemo(() => {
     const shuffled = shuffle(item.distractors)
     const picked = shuffled.slice(0, 2)
-    console.log(answer, picked)
     return shuffle([answer, ...picked])
-  })
+  }, [item])
 
   const [selected, setSelected] = useState<string | null>(null)
 

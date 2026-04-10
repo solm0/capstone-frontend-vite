@@ -12,8 +12,6 @@ export default function LemmaExpansion({
   data: LemmaExpansion;
   onSelect: (tokenKey: string) => void;
 }) {
-  console.log(data)
-
   // relationships -> kwic -> hints
   const [expansionIdx, setExpansionIdx] = useState<number>(0);
 
@@ -35,7 +33,7 @@ export default function LemmaExpansion({
           <div className="top-0 left-0 w-full h-full bg-gray-200 z-10 pointer-events-auto">
             {data.lemma}
             <AudioCapture />
-            <Cloze lemma="бесконечный" pos="ADJ" />
+            <Cloze lemma={data.lemma} pos={data.pos} />
           </div>
         }
       </div>
