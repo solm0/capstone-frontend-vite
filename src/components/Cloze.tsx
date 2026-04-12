@@ -97,8 +97,8 @@ export default function Cloze({
   lemma,
   pos
 }: {
-  lemma: string
-  pos: string
+  lemma: string | null
+  pos: string | null
 }) {
   const [data, setData] = useState<ClozeItem[] | null>(null)
   const [loading, setLoading] = useState(true)
@@ -124,6 +124,8 @@ export default function Cloze({
     setLoading(true)
     setError(false)
 
+    if (!lemma || !pos) return;
+    
     try {
       const res = await fetch(
         `http://localhost:8000/cloze?lemma=${encodeURIComponent(lemma)}&pos=${pos}`

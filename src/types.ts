@@ -18,7 +18,7 @@ export interface Token {
   lemma: string;
   pos: string;
   surface: string;
-  dep: string;
+  dep?: string;
 }
 
 export interface CorpusFragment {

@@ -1,9 +1,17 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import CorpusFragment from "./CorpusFragment";
 import LemmaExpansion from "./LemmaExpansion";
 import type { CorpusFragment as CF, LayoutData, LemmaExpansion as LE } from "../../types";
 import type { D3Node } from "../breadcrumb/Breadcrumb";
 import { fetchLemma } from "../../api";
+import Modal from "../Modal";
+import Cloze from "../Cloze";
+
+type TaskState = {
+  taskOpen: boolean;
+  lemma: string | null;
+  pos: string | null;
+};
 
 export default function Desk({
   activeNode,
@@ -14,6 +22,7 @@ export default function Desk({
   onLemmaFetchSuccess,
   onLemmaFetchError,
   onSelect,
+  isBCExpanded
 }: {
   activeNode: D3Node | null;
   layouts: LayoutData[] ;
@@ -23,8 +32,10 @@ export default function Desk({
   onLemmaFetchSuccess?: (lemmaId: string) => void;
   onLemmaFetchError?: (lemmaId: string) => void;
   onSelect: (tokenKey: string) => void;
+  isBCExpanded: boolean;
 }) {
   const inflightRef = useRef(new Set<string>());
+  const [taskOpen, setTaskOpen] = useState<TaskState>({taskOpen: false, lemma: null, pos: null});
 
   useEffect(() => {
     const lemmaId = activeNode?.data.lemma;
@@ -63,12 +74,26 @@ export default function Desk({
     component = <CorpusFragment data={content} onSelect={onSelect} metadata={{author:layout.author??null, title: layout.title??null}} />
   } else if (layout?.type === 'lemmaExpansion') {
     const content = layout.content as LE;
-    component = <LemmaExpansion data={content} onSelect={onSelect} />
+    component = <LemmaExpansion data={content} onSelect={onSelect} isBCExpaned={isBCExpanded} setTaskOpen={setTaskOpen} />
   } else component = <div>wrong layout type</div>
 
   return (
-    <div className="w-full h-full flex">
-      {component}
-    </div>
+    <>
+      <div className="w-full h-full flex">
+        {component}
+      </div>
+
+      {/* 태스크 모달 */}
+      <Modal
+        isOpen={taskOpen.taskOpen}
+        setIsOpen={() => setTaskOpen({taskOpen: false, lemma: null, pos: null})}
+        content={
+          <>
+            {taskOpen.lemma}
+            <Cloze lemma={taskOpen.lemma} pos={taskOpen.pos} />
+          </>
+        }
+      />
+    </>
   );
 }

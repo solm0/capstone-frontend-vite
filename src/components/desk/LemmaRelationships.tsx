@@ -1,204 +1,275 @@
-import { useEffect, useRef, useState } from "react";
-import * as d3 from "d3";
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import RawToken from "./RawToken";
 
-// ── 레이아웃 / 애니메이션 변수 ────────────────────────────────────────────────
-const ORBIT_RX_RATIO     = 0.24;   // 타원 궤도 가로 반지름 (컨테이너 너비 비율)
-const ORBIT_RY_RATIO     = 0.28;   // 타원 궤도 세로 반지름 (컨테이너 높이 비율)
-const ANT_OFFSET_X_RATIO = 0.38;   // antonym 가로 거리 (컨테이너 너비 비율)
-const ANT_ROW_GAP        = 44;     // antonym 세로 간격 (px)
-const BOB_AMP            = 8;      // 위아래 진폭 (px)
-const BOB_SPEED          = 0.001; // 위아래 속도
-const ORBIT_SPEED        = 0.00006;// 타원 공전 속도
-const LINK_CENTER_GAP = 50; // 중심에서 선이 시작하는 거리 (px)
-const HULL_ROUND = 0.1; // 0 = 각짐, 1 = 최대 곡률
+// ── 컨트롤 가능한 상수 ───────────────────────────────────────────────────────
+const CANVAS_HEIGHT = 700;
+const AXIS_LENGTH_X = 300;
+const AXIS_LENGTH_Y = 600;
+const AXIS_LENGTH_Z = 400;
+const ORIGIN_OFFSET_Y = 80;
+const AXIS_STROKE = "#a3a3a3";
+const AXIS_WIDTH = 1;
+const AXIS_OPACITY = 0.7;
+
+const MOUSE_ROTATION = -0.3; // radians at edge
+const PERSPECTIVE = 480;
+
+const WORD_RADIUS_MIN = 150;
+const WORD_RADIUS_MAX = 300;
+const WORD_Z_RANGE = 60;
+const ANTONYM_RADIUS_BOOST = 50;
+
+const PARALLAX_AXIS = 0.05;
+const PARALLAX_TEXT = 0.2;
+const SMOOTHING = 0.03;
 
 // ── 타입 ─────────────────────────────────────────────────────────────────────
 type Pos = { x: number; y: number };
+type Point3 = { x: number; y: number; z: number; word: string; isAntonym?: boolean };
 
-type SynMeta = { word: string; baseAngle: number; bobPhase: number };
-type AntMeta = { word: string; baseX: number; baseY: number; bobPhase: number };
+function hashString(value: string) {
+  let hash = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    hash = (hash << 5) - hash + value.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
+function lerp(a: number, b: number, t: number) {
+  return a + (b - a) * t;
+}
+
+function project3D(point: Pos & { z: number }, rotX: number, rotY: number) {
+  const cosY = Math.cos(rotY);
+  const sinY = Math.sin(rotY);
+  const cosX = Math.cos(rotX);
+  const sinX = Math.sin(rotX);
+
+  const x1 = point.x * cosY + point.z * sinY;
+  const z1 = -point.x * sinY + point.z * cosY;
+  const y2 = point.y * cosX - z1 * sinX;
+  const z2 = point.y * sinX + z1 * cosX;
+
+  const scale = PERSPECTIVE / (PERSPECTIVE + z2);
+  return { x: x1 * scale, y: y2 * scale, scale };
+}
 
 // ── 컴포넌트 ─────────────────────────────────────────────────────────────────
 export default function LemmaRelationships({
   data,
   onSelect,
   lemma,
+  scrollOffset = 0,
+  lemmaAnchor,
 }: {
   data: { related_words: string[]; antonyms: string[] };
   onSelect: (tokenKey: string) => void;
   lemma: string;
+  scrollOffset?: number;
+  lemmaAnchor?: { x: number; y: number };
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const svgRef       = useRef<SVGSVGElement>(null);
-  const animRef      = useRef<number | null>(null);
-  const synMetaRef   = useRef<SynMeta[]>([]);
-  const antMetaRef   = useRef<AntMeta[]>([]);
-
-  const [centerPos,    setCenterPos]    = useState<Pos>({ x: 0, y: 0 });
-  const [synPositions, setSynPositions] = useState<Pos[]>([]);
-  const [antPositions, setAntPositions] = useState<Pos[]>([]);
+  const [centerPos, setCenterPos] = useState<Pos>({ x: 0, y: 0 });
+  const [mouse, setMouse] = useState({ x: 0.5, y: 0.5 });
+  const [smoothMouse, setSmoothMouse] = useState({ x: 0.5, y: 0.5 });
+  const [smoothScroll, setSmoothScroll] = useState(0);
+  const targetMouseRef = useRef({ x: 0.5, y: 0.5 });
+  const targetScrollRef = useRef(0);
+  const rafRef = useRef<number | null>(null);
 
   const related_words = data.related_words ?? [];
   const antonyms = data.antonyms ?? [];
 
   useEffect(() => {
-    const container = containerRef.current!;
-    const W  = container.clientWidth  || 600;
-    const H  = container.clientHeight || 440;
-    const cx = W / 2, cy = H / 2;
+    const container = containerRef.current;
+    if (!container) return;
+    const updateSize = () => {
+      const W = container.clientWidth || 600;
+      const H = container.clientHeight || CANVAS_HEIGHT;
+      if (!lemmaAnchor) {
+        setCenterPos({ x: W / 2, y: H / 2 + ORIGIN_OFFSET_Y });
+        return;
+      }
+      const rect = container.getBoundingClientRect();
+      const targetX = lemmaAnchor.x * window.innerWidth;
+      const targetY = lemmaAnchor.y * window.innerHeight;
+      setCenterPos({
+        x: targetX - rect.left,
+        y: targetY - rect.top + ORIGIN_OFFSET_Y,
+      });
+    };
+    updateSize();
+    const ro = new ResizeObserver(updateSize);
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, [lemmaAnchor, scrollOffset]);
 
-    setCenterPos({ x: cx, y: cy });
-
-    // bobPhase 초기화 (lemma/data 바뀔 때만)
-    synMetaRef.current = related_words.map((word, i) => ({
-      word,
-      baseAngle: (2 * Math.PI * i) / Math.max(related_words.length, 1),
-      bobPhase: Math.random() * Math.PI * 2,
-    }));
-    antMetaRef.current = antonyms.map((word, i) => {
-      const side = i % 2 === 0 ? -1 : 1;
-      const row  = Math.floor(i / 2);
+  const points = useMemo<Point3[]>(() => {
+    const makePoint = (word: string, idx: number, isAntonym?: boolean) => {
+      const seed = hashString(`${word}-${idx}`);
+      const seed2 = hashString(`${word}-${idx}-z`);
+      const seed3 = hashString(`${word}-${idx}-r`);
+      const angle = (seed % 360) * (Math.PI / 180);
+      const radius = lerp(WORD_RADIUS_MIN, WORD_RADIUS_MAX, (seed3 % 100) / 100);
+      const z = lerp(-WORD_Z_RANGE, WORD_Z_RANGE, (seed2 % 100) / 100);
+      const boosted = isAntonym ? radius + ANTONYM_RADIUS_BOOST : radius;
       return {
         word,
-        baseX: cx + side * (W * ANT_OFFSET_X_RATIO),
-        baseY: cy - (antonyms.length / 2 - row - 0.5) * ANT_ROW_GAP,
-        bobPhase: Math.random() * Math.PI * 2,
+        x: Math.cos(angle) * boosted,
+        y: Math.sin(angle) * boosted * 0.5,
+        z,
+        isAntonym,
+      };
+    };
+
+    const syn = related_words.map((word, i) => makePoint(word, i));
+    const ants = antonyms.map((word, i) => makePoint(word, i, true));
+    return [...syn, ...ants];
+  }, [related_words.join(","), antonyms.join(",")]);
+
+  const projectedPoints = useMemo(() => {
+    const rotY = (smoothMouse.x - 0.5) * MOUSE_ROTATION;
+    const rotX = (0.5 - smoothMouse.y) * MOUSE_ROTATION;
+    return points.map((p) => {
+      const proj = project3D({ x: p.x, y: p.y, z: p.z }, rotX, rotY);
+      return {
+        ...p,
+        x2d: proj.x + centerPos.x,
+        y2d: proj.y + centerPos.y,
+        scale: proj.scale,
       };
     });
+  }, [points, smoothMouse, centerPos]);
 
-    // SVG 초기화
-    const svg = d3.select(svgRef.current!);
-    svg.selectAll("*").remove();
-    svg.attr("width", W).attr("height", H);
+  const axisLines = useMemo(() => {
+    const rotY = (smoothMouse.x + 1.5) * MOUSE_ROTATION;
+    const rotX = (-0.3 - smoothMouse.y) * MOUSE_ROTATION;
+    const axes = [
+      { x: AXIS_LENGTH_X * 500, y: 0, z: 0, label: "x+" },
+      { x: -AXIS_LENGTH_X, y: 0, z: 0, label: "x-" },
+      { x: 0, y: -AXIS_LENGTH_Y, z: 0, label: "y+" },
+      { x: 0, y: AXIS_LENGTH_Y, z: 0, label: "y-" },
+      { x: 0, y: 0, z: AXIS_LENGTH_Z * 10, label: "z+" },
+      { x: 0, y: 0, z: -AXIS_LENGTH_Z, label: "z-" },
+    ];
+    return axes.map((axis) => {
+      const proj = project3D({ x: axis.x, y: axis.y, z: axis.z }, rotX, rotY);
+      return {
+        label: axis.label,
+        x1: centerPos.x,
+        y1: centerPos.y,
+        x2: proj.x + centerPos.x,
+        y2: proj.y + centerPos.y,
+      };
+    });
+  }, [smoothMouse, centerPos]);
 
-    const hullLayer    = svg.append("g");
-    const antLinkLayer = svg.append("g");
-
-    const antLinks = antLinkLayer.selectAll("line")
-      .data(antMetaRef.current).enter().append("line")
-      .attr("stroke", "#585a5c").attr("stroke-width", 1.3)
-      .attr("stroke-dasharray", "3 5").attr("opacity", 0.38);
-
-    const hullPath = hullLayer.append("path")
-      .attr("fill", "#E5FF0080")
-
-    const orbitRx = W * ORBIT_RX_RATIO;
-    const orbitRy = H * ORBIT_RY_RATIO;
-
-    let t0: number | null = null;
-
-    function tick(ts: number) {
-      if (t0 === null) t0 = ts;
-      const t = ts - t0;
-
-      const sp: [number, number][] = synMetaRef.current.map((d) => {
-        const angle = d.baseAngle + t * ORBIT_SPEED;
-        const bob   = Math.sin(t * BOB_SPEED + d.bobPhase) * BOB_AMP;
-        return [cx + orbitRx * Math.cos(angle), cy + orbitRy * Math.sin(angle) + bob];
-      });
-
-      const ap: [number, number][] = antMetaRef.current.map((d) => {
-        const bob = Math.sin(t * BOB_SPEED * 0.85 + d.bobPhase) * BOB_AMP;
-        return [d.baseX, d.baseY + bob];
-      });
-
-      antLinks.each(function (_, i) {
-        const [tx, ty] = ap[i];
-        const dx = tx - cx, dy = ty - cy;
-        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-        d3.select(this)
-          .attr("x1", cx + (dx / dist) * LINK_CENTER_GAP)
-          .attr("y1", cy + (dy / dist) * LINK_CENTER_GAP)
-          .attr("x2", tx - (dx / dist) * LINK_CENTER_GAP)
-          .attr("y2", ty - (dy / dist) * LINK_CENTER_GAP);
-      });
-
-      if (sp.length >= 3) {
-        const hull = d3.polygonHull(sp);
-        if (hull) {
-          const padded = hull.map(([px, py]) => {
-            const dx = px - cx, dy = py - cy;
-            const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-            return [px + (dx / dist) * 20, py + (dy / dist) * 20] as [number, number];
-          });
-
-          const n = padded.length;
-          const d = padded.map((p, i) => {
-            const prev = padded[(i - 1 + n) % n];
-            const next = padded[(i + 1) % n];
-            // 이웃 꼭짓점 방향으로 당긴 제어점
-            const cp1x = p[0] + (next[0] - prev[0]) * HULL_ROUND;
-            const cp1y = p[1] + (next[1] - prev[1]) * HULL_ROUND;
-            return { p, cp1: [cp1x, cp1y] };
-          });
-
-          const path = d.map(({ p }, i) => {
-            const prev = d[(i - 1 + n) % n];
-            // 이전 꼭짓점의 cp1을 반전시켜 cp2로 사용
-            const cp2x = p[0] - (d[(i + 1) % n].p[0] - prev.p[0]) * HULL_ROUND;
-            const cp2y = p[1] - (d[(i + 1) % n].p[1] - prev.p[1]) * HULL_ROUND;
-            return `${i === 0 ? "M" : "C"} ${prev.cp1[0]},${prev.cp1[1]} ${cp2x},${cp2y} ${p[0]},${p[1]}`;
-          }).join(" ") + " Z";
-
-          hullPath.attr("d", path);
-        }
-      } else {
-        hullPath.attr("d", "");
-      }
-
-      setSynPositions(sp.map(([x, y]) => ({ x, y })));
-      setAntPositions(ap.map(([x, y]) => ({ x, y })));
-
-      animRef.current = requestAnimationFrame(tick);
-    }
-
-    animRef.current = requestAnimationFrame(tick);
-    return () => {
-      if (animRef.current !== null) cancelAnimationFrame(animRef.current);
+  const handleMouseMove = (event: MouseEvent<HTMLDivElement>) => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const nx = (event.clientX - rect.left) / rect.width;
+    const ny = (event.clientY - rect.top) / rect.height;
+    const next = {
+      x: Math.max(0, Math.min(1, nx)),
+      y: Math.max(0, Math.min(1, ny)),
     };
-  }, [lemma, related_words.join(","), antonyms.join(",")]);
+    setMouse(next);
+    targetMouseRef.current = next;
+  };
+
+  useEffect(() => {
+    targetScrollRef.current = scrollOffset;
+  }, [scrollOffset]);
+
+  useEffect(() => {
+    const tick = () => {
+      setSmoothMouse((prev) => ({
+        x: prev.x + (targetMouseRef.current.x - prev.x) * SMOOTHING,
+        y: prev.y + (targetMouseRef.current.y - prev.y) * SMOOTHING,
+      }));
+      setSmoothScroll((prev) => prev + (targetScrollRef.current - prev) * SMOOTHING);
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
+  const axisParallax = -smoothScroll * PARALLAX_AXIS;
+  const textParallax = -smoothScroll * PARALLAX_TEXT;
 
   return (
     <div
       ref={containerRef}
+      onMouseMove={handleMouseMove}
       style={{
         position: "relative",
         width: "100%",
-        height: "440px",
+        height: innerHeight,
         overflow: "hidden",
       }}
     >
-      {/* SVG: 선 + hull만 (pointer-events: none) */}
+      {/* axis layer */}
       <svg
-        ref={svgRef}
         style={{
           position: "absolute",
           inset: 0,
           width: "100%",
           height: "100%",
           pointerEvents: "none",
+          transform: `translateY(${axisParallax}px) translateX(-130px)`,
         }}
-      />
+      >
+        {axisLines.map((axis) => (
+          <line
+            key={axis.label}
+            x1={axis.x1}
+            y1={axis.y1}
+            x2={axis.x2}
+            y2={axis.y2}
+            stroke={AXIS_STROKE}
+            strokeWidth={AXIS_WIDTH}
+            strokeLinecap="round"
+            opacity={AXIS_OPACITY}
+          />
+        ))}
+      </svg>
 
-      {/* 중심 lemma */}
-      <NodeOverlay x={centerPos.x} y={centerPos.y}>
-        <RawToken token={{lemma: lemma.split('_')[0], pos: lemma.split('_')[1], surface:lemma.split('_')[0]}} onSelect={onSelect} />
-      </NodeOverlay>
+      {/* text layer */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          transform: `translateY(${textParallax - 90}px)`,
+        }}
+      >
+        {!lemmaAnchor && (
+          <NodeOverlay x={centerPos.x} y={centerPos.y}>
+            <RawToken
+              token={{ lemma: lemma.split("_")[0], pos: lemma.split("_")[1], surface: lemma.split("_")[0] }}
+              onSelect={onSelect}
+              stress
+            />
+          </NodeOverlay>
+        )}
 
-      {/* synonym 노드들 */}
-      {related_words.length != 0 && synPositions.map((pos, i) => (
-        <NodeOverlay key={related_words[i]} x={pos.x} y={pos.y}>
-          <RawToken token={{lemma: related_words[i].split('_')[0], pos: related_words[i].split('_')[1], surface:related_words[i].split('_')[0]}} onSelect={onSelect} />
-        </NodeOverlay>
-      ))}
-
-      {/* antonym 노드들 */}
-      {antonyms.length != 0 && antPositions.map((pos, i) => (
-        <NodeOverlay key={antonyms[i]} x={pos.x} y={pos.y}>
-          <RawToken token={{lemma: antonyms[i].split('_')[0], pos: antonyms[i].split('_')[1], surface:antonyms[i].split('_')[0]}} onSelect={onSelect} />
-        </NodeOverlay>
-      ))}
+        {projectedPoints.map((pos) => (
+          <NodeOverlay key={pos.word} x={pos.x2d} y={pos.y2d} scale={pos.scale}>
+            <span className={pos.isAntonym ? "opacity-60" : ""}>
+              <RawToken
+                token={{
+                  lemma: pos.word.split("_")[0],
+                  pos: pos.word.split("_")[1],
+                  surface: pos.word.split("_")[0],
+                }}
+                onSelect={onSelect}
+              />
+            </span>
+          </NodeOverlay>
+        ))}
+      </div>
     </div>
   );
 }
@@ -207,10 +278,12 @@ export default function LemmaRelationships({
 function NodeOverlay({
   x,
   y,
+  scale = 1,
   children,
 }: {
   x: number;
   y: number;
+  scale?: number;
   children: React.ReactNode;
 }) {
   return (
@@ -219,7 +292,7 @@ function NodeOverlay({
         position: "absolute",
         left: x,
         top: y,
-        transform: "translate(-50%, -50%)",
+        transform: `translate(-50%, -50%) scale(${scale})`,
         pointerEvents: "auto",
         userSelect: "none",
         whiteSpace: "nowrap",

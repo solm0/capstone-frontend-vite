@@ -8,11 +8,8 @@ export default function LemmaKwic({
   lemma: string
 }) {
   return (
-    <div className="flex flex-col gap-6 w-full items-center pt-32 md:mx-20">
-      <div className="absolute -translate-y-4 h-[60%] w-28">
-        <div className="-z-10 w-full h-full bg-gradient-to-b from-[#E5FF00] to-transparent rounded-lg blur-sm" />
-        <span className="absolute top-4 -translate-x-1/2 -translate-y-14">{lemma.split('_')[0]}</span>
-      </div>
+    <div className="flex flex-col gap-6 w-full items-center md:mx-20">
+      <div className="absolute h-[60vh] w-28 bg-gradient-to-b from-[#E5FF00] to-transparent rounded-lg blur-sm mix-blend-overlay" />
 
       {data.map((d, i) => {
         const tokens = d.tokens
@@ -27,11 +24,11 @@ export default function LemmaKwic({
         const right = tokens.slice(targetIdx + 1)
 
         return (
-          <div key={i} className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-10 w-full">
+          <div key={i} className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-8 w-full">
             
             {/* LEFT */}
             <div
-              className="flex gap-3 overflow-hidden h-auto justify-end"
+              className="flex gap-3 overflow-hidden h-auto justify-end pr-1"
               style={{
                 WebkitMaskImage: "linear-gradient(to right, transparent, black 24px)",
                 maskImage: "linear-gradient(to right, transparent, black 24px)",
@@ -44,12 +41,12 @@ export default function LemmaKwic({
 
             {/* TARGET */}
             <div className="text-center">
-              <RawToken token={{lemma: target.lemma, pos: target.pos, surface:target.surface}} onSelect={onSelect} />
+              <span className="z-80 text-xl">{target.surface}</span>
             </div>
 
             {/* RIGHT */}
             <div
-              className="flex gap-3 overflow-hidden h-auto justify-start"
+              className="flex gap-3 overflow-hidden h-auto justify-start pl-1"
               style={{
                 WebkitMaskImage: "linear-gradient(to left, transparent, black 24px)",
                 maskImage: "linear-gradient(to left, transparent, black 24px)",

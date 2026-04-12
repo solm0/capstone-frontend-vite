@@ -13,6 +13,7 @@ export default function Dashboard() {
   }, []);
 
   const breadcrumbRef = useRef<{ addNode: (parentLemma: string, newNode: TreeNode) => void }>(null);
+  const [expanded, setExpanded] = useState(false);
 
   const [activeNode, setActiveNode] = useState<D3Node | null>(null);
   const [layouts, setLayouts] = useState<LayoutData[]>([]);
@@ -105,12 +106,14 @@ export default function Dashboard() {
 
   return (
     <>
-      <div className="absolute w-screen h-screen font-it flex flex-col gap-3">
+      <div className="absolute w-screen h-screen font-it flex flex-col overflow-hidden">
         <Breadcrumb
           ref={breadcrumbRef}
           activeNode={activeNode}
           setActiveNode={setActiveNode}
           nodeStatusByLemma={lemmaStatus}
+          expanded={expanded}
+          setExpanded={setExpanded}
         />
         <Desk
           activeNode={activeNode}
@@ -137,6 +140,7 @@ export default function Dashboard() {
             });
           }}
           onSelect={handleTokenSelect}
+          isBCExpanded={expanded}
         />
       </div>
     </>

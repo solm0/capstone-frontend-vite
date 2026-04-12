@@ -45,10 +45,22 @@ export type D3Node = d3.HierarchyPointNode<TreeNode> & {
 const initialData: TreeNode = { lemma: "base" };
 
 // ── 컴포넌트 ─────────────────────────────────────────────────────────────────
+type BreadcrumbProps = {
+  activeNode: D3Node | null;
+  setActiveNode: (n: D3Node | null) => void;
+  nodeStatusByLemma?: Record<string, "loading" | "ready">;
+
+  expanded: boolean;
+  setExpanded: (expanded: boolean) => void;
+};
+
 const Breadcrumb = forwardRef<
   { addNode: (parentLemma: string, newNode: TreeNode) => void },
-  { activeNode: D3Node | null; setActiveNode: (n: D3Node | null) => void; nodeStatusByLemma?: Record<string, "loading" | "ready"> }
->(function Breadcrumb({ activeNode, setActiveNode, nodeStatusByLemma = {} }, ref) {
+  BreadcrumbProps
+>(function Breadcrumb(
+  { activeNode, setActiveNode, nodeStatusByLemma = {}, expanded, setExpanded },
+  ref
+) {
   const rootRef = useRef<D3Node | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -66,8 +78,6 @@ const Breadcrumb = forwardRef<
       updateRef.current(node ?? ({} as D3Node));
     }
   }, []);
-
-  const [expanded, setExpanded] = useState(false);
 
   // -- 컨트롤 ─────────────────────────────────────────────────────────────────
   const handleGotoBase = useCallback(() => {
@@ -607,7 +617,7 @@ const Breadcrumb = forwardRef<
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-auto border-b border-gray-800"
+      className="shrink-0 relative w-full h-auto border-b border-gray-800"
       style={{
         width: "100%",
         height: expanded ? "600px" : "200px",
