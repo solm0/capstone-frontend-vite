@@ -61,8 +61,8 @@ export async function getToday() {
 }
 
 export async function fetchLemma(lemma: string, pos: string) {
-  const res = await fetch(
-    `http://localhost:8000/lemma?lemma=${encodeURIComponent(lemma)}&pos=${pos}`
+  const res = await fetch(API + 
+    `/lemma?lemma=${encodeURIComponent(lemma)}&pos=${pos}`
   );
   if (!res.ok) throw new Error();
   return res.json();
@@ -78,6 +78,23 @@ export async function getHistory() {
   })
 
   if (!res.ok) throw new Error("failed to fetch history")
+
+  return res.json()
+}
+
+export async function selectTodayPoem(poem_id: number) {
+  const token = localStorage.getItem("token")
+
+  const res = await fetch(API + "/today/select", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ poem_id })
+  })
+
+  if (!res.ok) throw new Error("failed to select poem")
 
   return res.json()
 }

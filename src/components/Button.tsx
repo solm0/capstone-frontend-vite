@@ -1,13 +1,21 @@
 import { Link } from "react-router-dom";
 
 export default function Button({
-  text, onClick
+  text, onClick, disabled = false
 }: {
   text: string;
-  onClick: () => void
+  onClick: () => void;
+  disabled?: boolean;
 }) {
   return (
-    <button className="opacity-80 hover:opacity-100 hover:font-tx" onClick={() => onClick()}>
+    <button
+      disabled={disabled}
+      className={`
+        hover:opacity-100 hover:font-tx
+        ${disabled ? 'opacity-30' : 'opacity-80'}
+      `}
+      onClick={() => onClick()}
+    >
       <span>&gt; {text}</span>
     </button>
   )

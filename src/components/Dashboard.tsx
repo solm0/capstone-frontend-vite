@@ -2,9 +2,16 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Breadcrumb, { type D3Node } from "./breadcrumb/Breadcrumb";
 import Desk from "./desk/Desk";
 import type { CorpusFragment, CorpusFragmentData, LayoutData, TreeNode } from "../types";
-import { getToday } from "../api";
+import { getToday, verifyToken } from "../api";
+import { poemSample } from "../assets/data/nologin-poem";
 
 export default function Dashboard() {
+  const [user, setUser] = useState(null);
+  
+  useEffect(() => {
+    verifyToken().then(setUser);
+  }, []);
+
   const breadcrumbRef = useRef<{ addNode: (parentLemma: string, newNode: TreeNode) => void }>(null);
 
   const [activeNode, setActiveNode] = useState<D3Node | null>(null);
@@ -12,28 +19,39 @@ export default function Dashboard() {
   const [activeId, setActiveId] = useState<string | null>('cf');
 
   useEffect(() => {
-    getToday().then(data => {
+    const run = async () => {
+      let cfData:LayoutData;
+  
+      if (!user) {
+        cfData = {
+          id: 'cf',
+          type: 'corpusFragment',
+          content: poemSample,
+        }
+      } else {
+        const data = await getToday();
 
-      const lines:CorpusFragment[] = [];
-      (data as CorpusFragmentData).history.map(item => {
-        
-        item.lines.map(i => {
-          lines.push({
-            date: item.date,
-            text: i.text,
-            tokens: i.tokens
-          }) 
+        const lines: CorpusFragment[] = [];
+        (data as CorpusFragmentData).history.forEach(item => {
+          item.lines.forEach(i => {
+            lines.push({
+              date: item.date,
+              text: i.text,
+              tokens: i.tokens
+            })
+          })
         })
-      })
 
-      const cfData: LayoutData = {
-        id: 'cf',
-        type: 'corpusFragment',
-        content: lines,
+        cfData = {
+          id: 'cf',
+          type: 'corpusFragment',
+          content: lines,
+          //author title
+        }
       }
-
       setLayouts([cfData]);
-    })
+    }
+    run();
   }, [])
 
   const addLayout = useCallback((layout: LayoutData) => {

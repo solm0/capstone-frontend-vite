@@ -16,11 +16,12 @@ export interface Token {
   lemma: string;
   pos: string;
   surface: string;
+  dep: string;
 }
 
 export interface CorpusFragment {
   date: string;
-  text: string;
+  text?: string;
   tokens: Token[]
 }
 

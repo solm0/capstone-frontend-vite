@@ -7,6 +7,7 @@ export default function CorpusFragment({
   data: CorpusFragment[];
   onSelect: (tokenKey: string) => void;
 }) {
+  console.log(data)
   return (
     <div
       className="pl-32 pt-32 flex flex-col rounded-sm gap-6 w-[600px]"

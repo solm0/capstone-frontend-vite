@@ -5,6 +5,7 @@ import LemmaKwic from "./LemmaKwic";
 import LemmaHints from "./LemmaHints";
 import AudioCapture from "../AudioCapture";
 import Cloze from "../Cloze";
+import Modal from "../Modal";
 
 export default function LemmaExpansion({
   data, onSelect
@@ -27,16 +28,17 @@ export default function LemmaExpansion({
       {component}
 
       {/* 태스크 모달 */}
-      <div className={`absolute top-0 left-0 w-screen h-screen flex items-center justify-center p-20 pointer-events-none`}>
-        <div onClick={() => setTaskOpen(false)} className={`absolute w-full h-full opacity-50 z-0 ${taskOpen ? 'bg-gray-500 pointer-events-auto' : 'bg-transparent pointer-events-none'} transition-colors duration-300`}></div>
-        {taskOpen &&
-          <div className="top-0 left-0 w-full h-full bg-gray-200 z-10 pointer-events-auto">
+      <Modal
+        isOpen={taskOpen}
+        setIsOpen={setTaskOpen}
+        content={
+          <>
             {data.lemma}
             <AudioCapture />
             <Cloze lemma={data.lemma} pos={data.pos} />
-          </div>
+          </>
         }
-      </div>
+      />
       
       {/* 넘어가기 버튼(임시) */}
       <div className="absolute bottom-20 right-20 flex gap-2">
