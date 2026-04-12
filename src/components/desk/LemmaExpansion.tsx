@@ -3,7 +3,6 @@ import type { LemmaExpansion } from "../../types";
 import LemmaRelationships from "./LemmaRelationships";
 import LemmaKwic from "./LemmaKwic";
 import LemmaHints from "./LemmaHints";
-import AudioCapture from "../AudioCapture";
 import Cloze from "../Cloze";
 import Modal from "../Modal";
 
@@ -34,7 +33,6 @@ export default function LemmaExpansion({
         content={
           <>
             {data.lemma}
-            <AudioCapture />
             <Cloze lemma={data.lemma} pos={data.pos} />
           </>
         }

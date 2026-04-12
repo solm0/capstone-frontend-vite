@@ -1,6 +1,31 @@
-import { useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 
-export default function AudioCapture() {
+export type AudioCaptureHandle = {
+  start: () => Promise<void>;
+  stop: () => void;
+  isRecording: () => boolean;
+};
+
+type AudioCaptureProps = {
+  onFinalText?: (text: string) => void;
+  onPartialText?: (text: string) => void;
+  autoStart?: boolean;
+  showControls?: boolean;
+  showTranscripts?: boolean;
+  resetKey?: number;
+};
+
+const AudioCapture = forwardRef<AudioCaptureHandle, AudioCaptureProps>(function AudioCapture(
+  {
+    onFinalText,
+    onPartialText,
+    autoStart = false,
+    showControls = true,
+    showTranscripts = true,
+    resetKey,
+  },
+  ref
+) {
   const wsRef = useRef<WebSocket | null>(null);
   const [finalTexts, setFinalTexts] = useState<string[]>([]);
   const [partialText, setPartialText] = useState("");
@@ -10,6 +35,12 @@ export default function AudioCapture() {
   const workletRef = useRef<AudioWorkletNode | null>(null);
 
   const [isRecording, setIsRecording] = useState(false);
+
+  useEffect(() => {
+    if (resetKey === undefined) return;
+    setFinalTexts([]);
+    setPartialText("");
+  }, [resetKey]);
 
   const connectWS = () => {
     const ws = new WebSocket("ws://localhost:8000/ws/stt");
@@ -23,11 +54,13 @@ export default function AudioCapture() {
 
       if (msg.type === "partial") {
         setPartialText(msg.text);
+        onPartialText?.(msg.text);
       }
 
       if (msg.type === "final") {
         setFinalTexts((prev) => [...prev, msg.text]);
         setPartialText("");
+        onFinalText?.(msg.text);
       }
     };
 
@@ -79,6 +112,8 @@ export default function AudioCapture() {
 
       ws.send(JSON.stringify({ type: "audio", data: base64 }));
     };
+
+    setIsRecording(true);
   };
 
   const stop = () => {
@@ -99,31 +134,48 @@ export default function AudioCapture() {
     // 4. (선택) WebSocket 유지 or 종료
     wsRef.current?.close();
     wsRef.current = null;
+
+    setIsRecording(false);
   };
 
   const handleClick = async () => {
     if (isRecording) {
       stop();
-      setIsRecording(false);
     } else {
       await start();
-      setIsRecording(true);
     }
   };
 
+  useEffect(() => {
+    if (!autoStart || isRecording) return;
+    start();
+  }, [autoStart, isRecording]);
+
+  useImperativeHandle(ref, () => ({
+    start,
+    stop,
+    isRecording: () => isRecording,
+  }));
+
   return (
     <div>
-      <button onClick={handleClick}>
-        {isRecording ? "Stop" : "Start"}
-      </button>
+      {showControls && (
+        <button onClick={handleClick}>
+          {isRecording ? "Stop" : "Start"}
+        </button>
+      )}
 
-      <div>
-        {finalTexts.map((t, i) => (
-          <div key={i}>{t}</div>
-        ))}
+      {showTranscripts && (
+        <div>
+          {finalTexts.map((t, i) => (
+            <div key={i}>{t}</div>
+          ))}
 
-        <span>{partialText}</span>
-      </div>
+          <span>{partialText}</span>
+        </div>
+      )}
     </div>
   );
-}
+});
+
+export default AudioCapture;
