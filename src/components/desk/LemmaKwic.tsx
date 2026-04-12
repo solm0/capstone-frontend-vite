@@ -8,8 +8,7 @@ export default function LemmaKwic({
   lemma: string
 }) {
   return (
-    <div className="flex flex-col gap-6 w-full items-center md:mx-20">
-      <div className="absolute h-[60vh] w-28 bg-gradient-to-b from-[#E5FF00] to-transparent rounded-lg blur-sm mix-blend-overlay" />
+    <div className="flex flex-col w-full h-auto items-center">
 
       {data.map((d, i) => {
         const tokens = d.tokens
@@ -24,7 +23,9 @@ export default function LemmaKwic({
         const right = tokens.slice(targetIdx + 1)
 
         return (
-          <div key={i} className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-8 w-full">
+          <div key={i} className={`
+            grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 w-full z-10 h-10
+          `}>
             
             {/* LEFT */}
             <div
@@ -40,7 +41,7 @@ export default function LemmaKwic({
             </div>
 
             {/* TARGET */}
-            <div className="text-center">
+            <div className="text-center bg-neutral-300 px-2 rounded-lg">
               <span className="z-80 text-xl">{target.surface}</span>
             </div>
 

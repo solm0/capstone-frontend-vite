@@ -3,16 +3,15 @@ import type { LemmaExpansion } from "../../types";
 import LemmaRelationships from "./LemmaRelationships";
 import LemmaKwic from "./LemmaKwic";
 import LemmaHints from "./LemmaHints";
-import RawToken from "./RawToken";
 
 const SECTION_GAP = 160;
-const PROGRESS_WIDTH = 10;
+const PROGRESS_WIDTH = 5;
 const PROGRESS_HEIGHT = "70vh";
 const PROGRESS_SEG_GAP = 10;
 
 const LEMMA_POSITIONS = [
-  { x: 0.4, y: 0.58 }, // relationships: slightly left
-  { x: 0.5, y: 0.22 },  // kwic: upper center
+  { x: 0.5, y: 0.58 },  // relationships: slightly left
+  { x: 0.5, y: 0.26 },  // kwic: upper center
   { x: 0.5, y: 0.24 },  // hints: upper center (slightly lower)
 ];
 
@@ -25,6 +24,7 @@ export default function LemmaExpansion({
   setTaskOpen: (arg: {taskOpen: boolean; lemma: string | null; pos: string | null}) => void;
 }) {
   const [scrollTop, setScrollTop] = useState(0);
+  const [containerHeight, setContainerHeight] = useState(0);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const sectionRefs = [
@@ -39,6 +39,7 @@ export default function LemmaExpansion({
     if (!container) return;
 
     const updateMetrics = () => {
+      setContainerHeight(container.clientHeight);
       sectionTopsRef.current = sectionRefs.map((ref) => ref.current?.offsetTop ?? 0);
     };
 
@@ -63,14 +64,29 @@ export default function LemmaExpansion({
   const progressBySection = useMemo(() => {
     const tops = sectionTopsRef.current;
     const nextTops = [...tops.slice(1), (containerRef.current?.scrollHeight ?? 0)];
+    const maxScroll = Math.max(0, (containerRef.current?.scrollHeight ?? 0) - containerHeight);
     return tops.map((top, i) => {
       const nextTop = nextTops[i] ?? top;
-      const range = Math.max(1, nextTop - top);
-      const currentPos = scrollTop + innerHeight;
-      const raw = (currentPos - top) / range;
-      return Math.max(0, Math.min(1, raw));
+      const end = Math.max(top, nextTop - containerHeight);
+      const range = Math.max(1, end - top);
+      const raw = (scrollTop - top) / range;
+      const clamped = Math.max(0, Math.min(1, raw));
+      if (i === tops.length - 1 && scrollTop >= maxScroll - 1) return 1;
+      return clamped;
     });
-  }, [scrollTop, innerHeight]);
+  }, [scrollTop, containerHeight]);
+
+  const getSectionVisibility = (index: number) => {
+    const top = sectionTopsRef.current[index] ?? 0;
+    const sectionEl = sectionRefs[index].current;
+    const height = sectionEl?.offsetHeight ?? 1;
+    const viewTop = scrollTop;
+    const viewBottom = scrollTop + containerHeight;
+    const sectionBottom = top + height;
+    const overlap = Math.max(0, Math.min(viewBottom, sectionBottom) - Math.max(viewTop, top));
+    const ratio = overlap / height;
+    return Math.max(0, Math.min(1, ratio / 0.5));
+  };
 
   const lemmaPosition = useMemo(() => {
     const tops = sectionTopsRef.current;
@@ -120,7 +136,7 @@ export default function LemmaExpansion({
 
       {/* floating lemma */}
       <div
-        className="fixed z-20 text-xl"
+        className={`fixed font-tb z-20 text-2xl ${isBCExpaned ? 'hidden' : 'block'}`}
         style={{
           left: `${lemmaPosition.x * 100}%`,
           top: `${lemmaPosition.y * 100}%`,
@@ -138,6 +154,7 @@ export default function LemmaExpansion({
             lemma={lemmaKey}
             scrollOffset={scrollTop}
             lemmaAnchor={lemmaPosition}
+            visibility={getSectionVisibility(0)}
           />
         </section>
 
