@@ -8,7 +8,9 @@ export type User = {
 
 export interface LayoutData {
   id: string; // 'cf', 'умирать'
-  type: 'corpusFragment' | 'lemmaExpansion' // 등등
+  type: 'corpusFragment' | 'lemmaExpansion'
+  author?: string;
+  title?: string;
   content: CorpusFragment[] | LemmaExpansion
 }
 

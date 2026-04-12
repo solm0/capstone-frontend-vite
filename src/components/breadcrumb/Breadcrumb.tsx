@@ -47,8 +47,8 @@ const initialData: TreeNode = { lemma: "base" };
 // ── 컴포넌트 ─────────────────────────────────────────────────────────────────
 const Breadcrumb = forwardRef<
   { addNode: (parentLemma: string, newNode: TreeNode) => void },
-  { activeNode: D3Node | null; setActiveNode: (n: D3Node | null) => void }
->(function Breadcrumb({ activeNode, setActiveNode }, ref) {
+  { activeNode: D3Node | null; setActiveNode: (n: D3Node | null) => void; nodeStatusByLemma?: Record<string, "loading" | "ready"> }
+>(function Breadcrumb({ activeNode, setActiveNode, nodeStatusByLemma = {} }, ref) {
   const rootRef = useRef<D3Node | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -57,6 +57,7 @@ const Breadcrumb = forwardRef<
   const activeNodeRef = useRef<D3Node | null>(null);
   const updateRef = useRef<((source: D3Node) => void) | null>(null);
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
+  const nodeStatusRef = useRef<Record<string, "loading" | "ready">>({});
 
   const setActive = useCallback((node: D3Node | null) => {
     activeNodeRef.current = node;
@@ -123,6 +124,13 @@ const Breadcrumb = forwardRef<
   }, [setActive]);
 
   // ─────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    nodeStatusRef.current = nodeStatusByLemma;
+    if (updateRef.current) {
+      updateRef.current(activeNodeRef.current ?? ({} as D3Node));
+    }
+  }, [nodeStatusByLemma]);
+
   useEffect(() => {
     let root = d3.hierarchy(initialData) as D3Node;
       root.x0 = 0;
@@ -193,6 +201,10 @@ const Breadcrumb = forwardRef<
 
     function isInternal(d: D3Node) {
       return !!d.children;
+    }
+
+    function getStatus(d: D3Node) {
+      return nodeStatusRef.current[d.data.lemma];
     }
 
     function getActivePath(active: D3Node | null): Set<string> {
@@ -410,6 +422,46 @@ const Breadcrumb = forwardRef<
         .attr("fill", STYLE.textColor)
         .text((d) => d.data.lemma.split('_')[0]);
 
+      const statusGroup = nodeEnter.append("g")
+        .attr("class", "status")
+        .attr("transform", "translate(12,-12)")
+        .style("pointer-events", "none")
+        .style("display", "none");
+
+      const spinner = statusGroup.append("g").attr("class", "status-spinner");
+      spinner.append("circle")
+        .attr("r", 6)
+        .attr("cx", 0)
+        .attr("cy", 0)
+        .attr("fill", "none")
+        .attr("stroke", "#f59e0b")
+        .attr("stroke-width", 2)
+        .attr("stroke-linecap", "round")
+        .attr("stroke-dasharray", "10 6");
+      spinner.append("animateTransform")
+        .attr("attributeName", "transform")
+        .attr("type", "rotate")
+        .attr("from", "0 0 0")
+        .attr("to", "360 0 0")
+        .attr("dur", "0.9s")
+        .attr("repeatCount", "indefinite");
+
+      const check = statusGroup.append("g").attr("class", "status-check");
+      check.append("circle")
+        .attr("r", 6)
+        .attr("cx", 0)
+        .attr("cy", 0)
+        .attr("fill", "#E5FF00")
+        .attr("stroke", "#3f3f46")
+        .attr("stroke-width", 1);
+      check.append("path")
+        .attr("d", "M -3 0 L -1 3 L 4 -3")
+        .attr("fill", "none")
+        .attr("stroke", "#111827")
+        .attr("stroke-width", 1.5)
+        .attr("stroke-linecap", "round")
+        .attr("stroke-linejoin", "round");
+
       const nodeUpdate = node.merge(nodeEnter);
 
       nodeUpdate.transition().duration(STYLE.duration)
@@ -422,7 +474,10 @@ const Breadcrumb = forwardRef<
         .attr("x", (d) => (isInternal(d) ? -6 : 6))
         .attr("text-anchor", (d) => (isInternal(d) ? "end" : "start"));
 
-      nodeUpdate.on("click", (_event, d) => {
+      nodeUpdate
+        .style("cursor", (d) => getStatus(d) === "loading" ? "progress" : "pointer")
+        .on("click", (_event, d) => {
+          if (getStatus(d) === "loading") return;
         fo.style("display", "none");
         hoveredNode = null;
         hoveredId = null;
@@ -462,6 +517,15 @@ const Breadcrumb = forwardRef<
       const allNodes  = nodeGroup.selectAll<SVGGElement, D3Node>("g.node");
       const allLinks  = linkGroup.selectAll<SVGPathElement, d3.HierarchyLink<TreeNode>>("path.link");
       applyOpacity(allNodes, allLinks, activeIds, hoveredId);
+
+      nodeGroup.selectAll<SVGGElement, D3Node>("g.node").select("g.status")
+        .style("display", (d) => getStatus(d) ? null : "none")
+        .select("g.status-spinner")
+        .style("display", (d) => getStatus(d) === "loading" ? null : "none");
+
+      nodeGroup.selectAll<SVGGElement, D3Node>("g.node").select("g.status")
+        .select("g.status-check")
+        .style("display", (d) => getStatus(d) === "ready" ? null : "none");
 
       nodes.forEach((d) => { d.x0 = d.x; d.y0 = d.y; });
     }

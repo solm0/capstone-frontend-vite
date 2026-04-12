@@ -17,8 +17,12 @@ export default function Dashboard() {
   const [activeNode, setActiveNode] = useState<D3Node | null>(null);
   const [layouts, setLayouts] = useState<LayoutData[]>([]);
   const [activeId, setActiveId] = useState<string | null>('cf');
+  const [lemmaStatus, setLemmaStatus] = useState<Record<string, "loading" | "ready">>({});
+  const prevActiveLemmaRef = useRef<string | null>(null);
 
   useEffect(() => {
+    if (user === null) return; 
+
     const run = async () => {
       let cfData:LayoutData;
   
@@ -26,6 +30,8 @@ export default function Dashboard() {
         cfData = {
           id: 'cf',
           type: 'corpusFragment',
+          author: '',
+          title: '',
           content: poemSample,
         }
       } else {
@@ -42,34 +48,57 @@ export default function Dashboard() {
           })
         })
 
+        
         cfData = {
           id: 'cf',
           type: 'corpusFragment',
+          author: data.history.length > 3 ? data.poem.author : '',
+          title: data.history.length > 5 ? data.poem.title : '',
           content: lines,
-          //author title
         }
       }
       setLayouts([cfData]);
     }
     run();
-  }, [])
+  }, [user])
 
-  const addLayout = useCallback((layout: LayoutData) => {
+  const addLayout = useCallback((layout: LayoutData, autoActivate = true) => {
     setLayouts(prev => {
       if (layout.id === "cf") return prev;
       if (prev.find(l => l.id === layout.id)) return prev;
       return [...prev, layout];
     });
-    setActiveId(layout.id);
+    if (autoActivate) setActiveId(layout.id);
   }, []);
 
   // breadcrumb 클릭
   useEffect(() => {
-    if (activeNode?.data.lemma === "base") setActiveId('cf');
-  }, [activeNode])
+    const nextLemmaId = activeNode?.data.lemma ?? null;
+    if (prevActiveLemmaRef.current === nextLemmaId) return;
+    prevActiveLemmaRef.current = nextLemmaId;
+
+    if (nextLemmaId === "base") {
+      setActiveId('cf');
+      return;
+    }
+
+    if (!nextLemmaId) return;
+    const hasLayout = layouts.some(l => l.id === nextLemmaId);
+    const isLoading = lemmaStatus[nextLemmaId] === "loading";
+    if (hasLayout && !isLoading) setActiveId(nextLemmaId);
+  }, [activeNode, layouts, lemmaStatus])
+
+  useEffect(() => {
+    if (!activeId) return;
+    if (lemmaStatus[activeId] !== "ready") return;
+    setLemmaStatus(prev => {
+      const next = { ...prev };
+      delete next[activeId];
+      return next;
+    });
+  }, [activeId, lemmaStatus]);
 
   const handleTokenSelect = (tokenKey: string) => {
-    // const lemma = tokenKey.split('_')[0];
     const parentLemma = activeNode?.data.lemma ?? "base";
     breadcrumbRef.current?.addNode(parentLemma, { lemma: tokenKey });
   };
@@ -77,12 +106,36 @@ export default function Dashboard() {
   return (
     <>
       <div className="absolute w-screen h-screen font-it flex flex-col gap-3">
-        <Breadcrumb ref={breadcrumbRef} activeNode={activeNode} setActiveNode={setActiveNode} />
+        <Breadcrumb
+          ref={breadcrumbRef}
+          activeNode={activeNode}
+          setActiveNode={setActiveNode}
+          nodeStatusByLemma={lemmaStatus}
+        />
         <Desk
           activeNode={activeNode}
           layouts={layouts}
           activeId={activeId}
           addLayout={addLayout}
+          onLemmaFetchStart={(lemmaId) => {
+            setLemmaStatus(prev => ({
+              ...prev,
+              [lemmaId]: "loading",
+            }));
+          }}
+          onLemmaFetchSuccess={(lemmaId) => {
+            setLemmaStatus(prev => ({
+              ...prev,
+              [lemmaId]: "ready",
+            }));
+          }}
+          onLemmaFetchError={(lemmaId) => {
+            setLemmaStatus(prev => {
+              const next = { ...prev };
+              delete next[lemmaId];
+              return next;
+            });
+          }}
           onSelect={handleTokenSelect}
         />
       </div>
