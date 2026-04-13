@@ -3,6 +3,7 @@ import type { LemmaExpansion } from "../../types";
 import LemmaRelationships from "./LemmaRelationships";
 import LemmaKwic from "./LemmaKwic";
 import LemmaHints from "./LemmaHints";
+import { fetchCloze } from "../../api";
 
 const SECTION_GAP = 160;
 const PROGRESS_WIDTH = 5;
@@ -12,15 +13,16 @@ const PROGRESS_SEG_GAP = 10;
 const LEMMA_POSITIONS = [
   { x: 0.5, y: 0.58 },  // relationships: slightly left
   { x: 0.5, y: 0.26 },  // kwic: upper center
-  { x: 0.5, y: 0.24 },  // hints: upper center (slightly lower)
+  { x: 0.5, y: 0.26 },  // hints: upper center (slightly lower)
 ];
 
 export default function LemmaExpansion({
-  data, onSelect, isBCExpaned, setTaskOpen
+  data, onSelect, isBCExpaned, taskOpen, setTaskOpen
 }: {
   data: LemmaExpansion;
   onSelect: (tokenKey: string) => void;
   isBCExpaned: boolean;
+  taskOpen: boolean
   setTaskOpen: (arg: {taskOpen: boolean; lemma: string | null; pos: string | null}) => void;
 }) {
   const [scrollTop, setScrollTop] = useState(0);
@@ -48,6 +50,11 @@ export default function LemmaExpansion({
     ro.observe(container);
     return () => ro.disconnect();
   }, []);
+
+  useEffect(() => {
+    if (!data?.lemma || !data?.pos) return;
+    fetchCloze(data.lemma, data.pos).catch(() => {});
+  }, [data?.lemma, data?.pos]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -136,7 +143,7 @@ export default function LemmaExpansion({
 
       {/* floating lemma */}
       <div
-        className={`fixed font-tb z-20 text-2xl ${isBCExpaned ? 'hidden' : 'block'}`}
+        className={`fixed font-tb z-20 text-2xl ${(isBCExpaned || taskOpen) ? 'hidden' : 'block'}`}
         style={{
           left: `${lemmaPosition.x * 100}%`,
           top: `${lemmaPosition.y * 100}%`,
@@ -147,20 +154,26 @@ export default function LemmaExpansion({
       </div>
 
       <div className="flex flex-col" style={{ gap: SECTION_GAP, paddingBottom: SECTION_GAP }}>
-        <section ref={sectionRefs[0]} className="min-h-[75vh] flex items-center">
-          <LemmaRelationships
-            data={data.expansions[0].content}
-            onSelect={onSelect}
-            lemma={lemmaKey}
-            scrollOffset={scrollTop}
-            lemmaAnchor={lemmaPosition}
-            visibility={getSectionVisibility(0)}
-          />
-        </section>
+        {data.expansions[0].content.related_words.length > 0 &&
+          <section ref={sectionRefs[0]} className="min-h-[75vh] flex items-center border-b border-neutral-300">
+            <LemmaRelationships
+              data={data.expansions[0].content}
+              onSelect={onSelect}
+              lemma={lemmaKey}
+              scrollOffset={scrollTop}
+              lemmaAnchor={lemmaPosition}
+              visibility={getSectionVisibility(0)}
+            />
+          </section>
+        }
 
-        <section ref={sectionRefs[1]} className="min-h-[75vh] flex items-start pt-20">
-          <LemmaKwic data={data.expansions[1].content} onSelect={onSelect} lemma={lemmaKey} />
-        </section>
+        {data.expansions[0].content.related_words.length > 0 ?
+          <section ref={sectionRefs[1]} className="min-h-[75vh] flex items-start pt-20">
+            <LemmaKwic data={data.expansions[1].content} onSelect={onSelect} lemma={lemmaKey} />
+          </section>
+          :
+          <div className="h-40" />
+        }
 
         <section ref={sectionRefs[2]} className="min-h-[75vh] flex items-start pt-20 pb-24">
           <LemmaHints data={data.expansions[2].content} lemma={lemmaKey} />
@@ -169,7 +182,7 @@ export default function LemmaExpansion({
 
       {/* task open button */}
       <div className="fixed bottom-8 right-8">
-        <button onClick={() => setTaskOpen({taskOpen: false, lemma: data.lemma, pos: data.pos})} className="font-tt hover:font-tb">
+        <button onClick={() => setTaskOpen({taskOpen: true, lemma: data.lemma, pos: data.pos})} className="font-tt hover:font-tb">
           I know what {data.lemma} means
         </button>
       </div>

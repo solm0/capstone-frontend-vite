@@ -16,7 +16,7 @@ const PERSPECTIVE = 480;
 
 const WORD_RADIUS_MIN = 150;
 const WORD_RADIUS_MAX = 300;
-const WORD_Z_RANGE = 80;
+const WORD_Z_RANGE = 90;
 const ANTONYM_RADIUS_BOOST = 50;
 
 const PARALLAX_AXIS = 0.05;
@@ -77,7 +77,6 @@ export default function LemmaRelationships({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [centerPos, setCenterPos] = useState<Pos>({ x: 0, y: 0 });
-  const [mouse, setMouse] = useState({ x: 0.5, y: 0.5 });
   const [smoothMouse, setSmoothMouse] = useState({ x: 0.5, y: 0.5 });
   const [smoothScroll, setSmoothScroll] = useState(0);
   const [time, setTime] = useState(0);
@@ -87,6 +86,8 @@ export default function LemmaRelationships({
 
   const related_words = data.related_words ?? [];
   const antonyms = data.antonyms ?? [];
+
+  if (related_words.length === 0) return;
 
   useEffect(() => {
     const container = containerRef.current;
@@ -260,7 +261,6 @@ export default function LemmaRelationships({
       x: Math.max(0, Math.min(1, nx)),
       y: Math.max(0, Math.min(1, ny)),
     };
-    setMouse(next);
     targetMouseRef.current = next;
   };
 

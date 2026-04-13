@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import AudioCapture, { type AudioCaptureHandle } from "./AudioCapture"
+import { fetchCloze } from "../api"
 
 type ClozeItem = {
   sentence: string
@@ -127,13 +128,7 @@ export default function Cloze({
     if (!lemma || !pos) return;
     
     try {
-      const res = await fetch(
-        `http://localhost:8000/cloze?lemma=${encodeURIComponent(lemma)}&pos=${pos}`
-      )
-
-      if (!res.ok) throw new Error()
-
-      const json = await res.json()
+      const json = await fetchCloze(lemma, pos)
       setData(json)
       setCurrentIndex(0)
       setSelectedAnswers(Array.isArray(json) ? json.map(() => null) : [])
@@ -195,7 +190,7 @@ export default function Cloze({
     }
   }
 
-  if (loading) return <div>...</div>
+  if (loading) return <div>문제를 생성하는 중...</div>
 
   if (error) {
     return (

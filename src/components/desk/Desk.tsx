@@ -74,7 +74,7 @@ export default function Desk({
     component = <CorpusFragment data={content} onSelect={onSelect} metadata={{author:layout.author??null, title: layout.title??null}} />
   } else if (layout?.type === 'lemmaExpansion') {
     const content = layout.content as LE;
-    component = <LemmaExpansion data={content} onSelect={onSelect} isBCExpaned={isBCExpanded} setTaskOpen={setTaskOpen} />
+    component = <LemmaExpansion data={content} onSelect={onSelect} isBCExpaned={isBCExpanded} setTaskOpen={setTaskOpen} taskOpen={taskOpen.taskOpen} />
   } else component = <div>wrong layout type</div>
 
   return (

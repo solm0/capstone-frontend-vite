@@ -68,6 +68,14 @@ export async function fetchLemma(lemma: string, pos: string) {
   return res.json();
 }
 
+export async function fetchCloze(lemma: string, pos: string) {
+  const res = await fetch(
+    API + `/cloze?lemma=${encodeURIComponent(lemma)}&pos=${pos}`
+  );
+  if (!res.ok) throw new Error("failed to fetch cloze");
+  return res.json();
+}
+
 export async function getHistory() {
   const token = localStorage.getItem("token")
 
